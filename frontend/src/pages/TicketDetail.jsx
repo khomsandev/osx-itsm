@@ -239,7 +239,7 @@ export default function TicketDetail({
         {sidebar}
         <main className="dashboard-main">
           <div className="detail-shell">
-            <button onClick={onBack} className="secondary-button">
+            <button onClick={onBack} className="back-link">
               <ArrowLeft size={16} />
               กลับ Dashboard
             </button>

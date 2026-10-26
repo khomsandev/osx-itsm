@@ -51,7 +51,7 @@ export default function TicketCreatePage({
 
             <button
               type="button"
-              className="secondary-button"
+              className="primary-button"
               onClick={onBack}
             >
               <ArrowLeft size={17} />
