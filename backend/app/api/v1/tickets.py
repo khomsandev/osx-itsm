@@ -1,8 +1,16 @@
+import os
+import uuid
+
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
+from pathlib import Path
+from fastapi import File, UploadFile
+from fastapi.responses import FileResponse
+
+from app.models.ticket_attachment import TicketAttachment
 from app.core.dependencies import CurrentUser, DbSession, require_roles
 from app.models.category import Category
 from app.models.ticket import Ticket
@@ -331,3 +339,195 @@ def assign_ticket_to_me(
 
     return ticket
 
+
+# เก็บไฟล์ไว้ที่ backend/uploads/tickets/
+UPLOAD_DIR = Path(__file__).resolve().parents[3] / "uploads" / "tickets"
+
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB ต่อไฟล์
+MAX_FILES = 5
+
+ALLOWED_EXTENSIONS = {
+    ".jpg", ".jpeg", ".png",
+    ".pdf", ".doc", ".docx",
+    ".xlsx", ".txt",
+}
+
+
+def check_ticket_access(ticket, user):
+    if user.role == "USER" and ticket.requester_id != user.id:
+        raise HTTPException(403, "Permission denied")
+
+
+@router.post("/{ticket_id}/attachments", status_code=201)
+async def upload_ticket_attachments(
+    ticket_id: int,
+    db: DbSession,
+    user: CurrentUser,
+    files: list[UploadFile] = File(...),
+):
+    ticket = db.get(Ticket, ticket_id)
+
+    if ticket is None:
+        raise HTTPException(404, "Ticket not found")
+
+    check_ticket_access(ticket, user)
+
+    if not files or len(files) > MAX_FILES:
+        raise HTTPException(
+            400, f"กรุณาเลือกไฟล์ตั้งแต่ 1 ถึง {MAX_FILES} ไฟล์"
+        )
+
+    prepared_files = []
+    total_size = 0
+
+    # ตรวจสอบไฟล์ทั้งหมดก่อนเขียนลงดิสก์
+    for upload in files:
+        original_name = Path(upload.filename or "").name
+
+        if not original_name:
+            raise HTTPException(400, "ชื่อไฟล์ไม่ถูกต้อง")
+
+        extension = Path(original_name).suffix.lower()
+
+        if extension not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                400, f"ไม่อนุญาตให้อัปโหลดไฟล์ {original_name}"
+            )
+
+        content = await upload.read(MAX_FILE_SIZE + 1)
+
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                413, f"ไฟล์ {original_name} มีขนาดเกิน 10 MB"
+            )
+
+        total_size += len(content)
+
+        if total_size > MAX_FILES * MAX_FILE_SIZE:
+            raise HTTPException(413, "ขนาดไฟล์รวมเกินกำหนด")
+
+        prepared_files.append(
+            (original_name, extension, content, upload.content_type)
+        )
+
+    target_dir = UPLOAD_DIR / str(ticket_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    created_paths = []
+    attachment_rows = []
+
+    try:
+        for original_name, extension, content, content_type in prepared_files:
+            stored_name = f"{uuid.uuid4().hex}{extension}"
+            file_path = target_dir / stored_name
+
+            with file_path.open("xb") as output:
+                output.write(content)
+
+            created_paths.append(file_path)
+
+            attachment = TicketAttachment(
+                ticket_id=ticket_id,
+                uploaded_by=user.id,
+                original_name=original_name,
+                stored_name=stored_name,
+                content_type=content_type or "application/octet-stream",
+                file_size=len(content),
+            )
+
+            db.add(attachment)
+            attachment_rows.append(attachment)
+
+        db.commit()
+
+        for attachment in attachment_rows:
+            db.refresh(attachment)
+
+        return [
+            {
+                "id": item.id,
+                "ticket_id": item.ticket_id,
+                "original_name": item.original_name,
+                "content_type": item.content_type,
+                "file_size": item.file_size,
+                "created_at": item.created_at,
+            }
+            for item in attachment_rows
+        ]
+
+    except Exception:
+        db.rollback()
+
+        for file_path in created_paths:
+            file_path.unlink(missing_ok=True)
+
+        raise
+
+
+@router.get("/{ticket_id}/attachments")
+def list_ticket_attachments(
+    ticket_id: int,
+    db: DbSession,
+    user: CurrentUser,
+):
+    ticket = db.get(Ticket, ticket_id)
+
+    if ticket is None:
+        raise HTTPException(404, "Ticket not found")
+
+    check_ticket_access(ticket, user)
+
+    items = db.scalars(
+        select(TicketAttachment)
+        .where(TicketAttachment.ticket_id == ticket_id)
+        .order_by(TicketAttachment.created_at.asc())
+    ).all()
+
+    return [
+        {
+            "id": item.id,
+            "ticket_id": item.ticket_id,
+            "original_name": item.original_name,
+            "content_type": item.content_type,
+            "file_size": item.file_size,
+            "created_at": item.created_at,
+        }
+        for item in items
+    ]
+
+
+@router.get("/{ticket_id}/attachments/{attachment_id}/download")
+def download_ticket_attachment(
+    ticket_id: int,
+    attachment_id: int,
+    db: DbSession,
+    user: CurrentUser,
+):
+    ticket = db.get(Ticket, ticket_id)
+
+    if ticket is None:
+        raise HTTPException(404, "Ticket not found")
+
+    check_ticket_access(ticket, user)
+
+    attachment = db.scalar(
+        select(TicketAttachment).where(
+            TicketAttachment.id == attachment_id,
+            TicketAttachment.ticket_id == ticket_id,
+        )
+    )
+
+    if attachment is None:
+        raise HTTPException(404, "Attachment not found")
+
+    file_path = UPLOAD_DIR / str(ticket_id) / attachment.stored_name
+
+    if not file_path.is_file():
+        raise HTTPException(404, "File not found on server")
+
+    return FileResponse(
+        path=file_path,
+        media_type="application/octet-stream",
+        filename=attachment.original_name,
+        content_disposition_type="attachment",
+    )

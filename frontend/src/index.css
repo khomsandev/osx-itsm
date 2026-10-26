@@ -544,3 +544,51 @@ button:disabled { cursor: not-allowed; }
   }
 }
 
+/* จัดโครงสร้างรายการไฟล์แนบ */
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background-color: var(--surface-subtle, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+}
+
+/* บังคับใช้ Font และ Size เดียวกับส่วนอื่นใน Card */
+.attachment-file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: inherit; /* ใช้ฟอนต์หลักของระบบ */
+  font-size: 0.9375rem; /* ขนาด ~15px เท่ากับข้อความในส่วนอื่น */
+  line-height: 1.5;
+  color: var(--text-primary, #1e293b);
+}
+
+.attachment-icon {
+  color: var(--text-muted, #64748b);
+  flex-shrink: 0;
+}
+
+.attachment-name {
+  font-weight: 500;
+  color: var(--text-primary, #0f172a);
+  word-break: break-all;
+}
+
+.attachment-size {
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+  font-weight: 400;
+}
+

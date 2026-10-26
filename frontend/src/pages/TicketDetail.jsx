@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
@@ -7,6 +6,8 @@ import {
   Clock3,
   History,
   MessageSquare,
+  Paperclip,
+  Download,
   RefreshCw,
   Send,
   ShieldCheck,
@@ -59,7 +60,6 @@ function getNextStatuses(ticket, role) {
     if (["CLOSED", "CANCELLED"].includes(status)) {
       return MANAGERS.includes(role);
     }
-
     return STAFF.includes(role);
   });
 }
@@ -74,6 +74,7 @@ export default function TicketDetail({
   const [ticket, setTicket] = useState(null);
   const [comments, setComments] = useState([]);
   const [history, setHistory] = useState([]);
+  const [attachments, setAttachments] = useState([]);
   const [comment, setComment] = useState("");
   const [status, setStatus] = useState("");
   const [statusNote, setStatusNote] = useState("");
@@ -82,9 +83,7 @@ export default function TicketDetail({
   const [saving, setSaving] = useState(false);
 
   usePageTitle(
-    ticket?.ticket_no
-      ? `Ticket ${ticket.ticket_no}`
-      : "รายละเอียด Ticket"
+    ticket?.ticket_no ? `Ticket ${ticket.ticket_no}` : "รายละเอียด Ticket"
   );
 
   const loadDetail = useCallback(async () => {
@@ -92,20 +91,22 @@ export default function TicketDetail({
     setError("");
 
     try {
-      const [ticketRes, commentsRes, historyRes] = await Promise.all([
-        api.get(`/tickets/${ticketId}`),
-        api.get(`/tickets/${ticketId}/comments`),
-        api.get(`/tickets/${ticketId}/history`),
-      ]);
+      const [ticketRes, commentsRes, historyRes, attachmentsRes] =
+        await Promise.all([
+          api.get(`/tickets/${ticketId}`),
+          api.get(`/tickets/${ticketId}/comments`),
+          api.get(`/tickets/${ticketId}/history`),
+          api.get(`/tickets/${ticketId}/attachments`),
+        ]);
 
       setTicket(ticketRes.data);
       setComments(commentsRes.data);
       setHistory(historyRes.data);
+      setAttachments(attachmentsRes.data);
       setStatus(ticketRes.data.status);
     } catch (err) {
       setError(
-        err.response?.data?.detail ||
-          "ไม่สามารถโหลดรายละเอียด Ticket ได้"
+        err.response?.data?.detail || "ไม่สามารถโหลดรายละเอียด Ticket ได้"
       );
     } finally {
       setLoading(false);
@@ -125,9 +126,7 @@ export default function TicketDetail({
       await loadDetail();
       await onUpdated?.();
     } catch (err) {
-      setError(
-        err.response?.data?.detail || "ไม่สามารถรับงานได้"
-      );
+      setError(err.response?.data?.detail || "ไม่สามารถรับงานได้");
     } finally {
       setSaving(false);
     }
@@ -155,11 +154,30 @@ export default function TicketDetail({
       await onUpdated?.();
     } catch (err) {
       setError(
-        err.response?.data?.detail ||
-          "ไม่สามารถเปลี่ยนสถานะ Ticket ได้"
+        err.response?.data?.detail || "ไม่สามารถเปลี่ยนสถานะ Ticket ได้"
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function downloadAttachment(attachment) {
+    setError("");
+    try {
+      const response = await api.get(
+        `/tickets/${ticketId}/attachments/${attachment.id}/download`,
+        { responseType: "blob" }
+      );
+      const objectUrl = window.URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = attachment.original_name || "attachment";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      setError(err.response?.data?.detail || "ดาวน์โหลดไฟล์ไม่สำเร็จ");
     }
   }
 
@@ -183,15 +201,13 @@ export default function TicketDetail({
       await loadDetail();
     } catch (err) {
       setError(
-        err.response?.data?.detail ||
-          "ไม่สามารถบันทึกความคิดเห็นได้"
+        err.response?.data?.detail || "ไม่สามารถบันทึกความคิดเห็นได้"
       );
     } finally {
       setSaving(false);
     }
   }
 
-  // Sidebar และโครงหน้าหลัก ใช้ร่วมกันทุกสถานะ
   const sidebar = (
     <AppSidebar
       user={user}
@@ -205,7 +221,6 @@ export default function TicketDetail({
     return (
       <div className="dashboard-shell">
         {sidebar}
-
         <main className="dashboard-main">
           <div className="detail-shell">
             <div className="loading-panel">
@@ -222,17 +237,12 @@ export default function TicketDetail({
     return (
       <div className="dashboard-shell">
         {sidebar}
-
         <main className="dashboard-main">
           <div className="detail-shell">
-            <button
-              onClick={onBack}
-              className="secondary-button"
-            >
+            <button onClick={onBack} className="secondary-button">
               <ArrowLeft size={16} />
               กลับ Dashboard
             </button>
-
             <div role="alert" className="error-banner">
               {error || "ไม่พบ Ticket"}
             </div>
@@ -244,7 +254,6 @@ export default function TicketDetail({
 
   const nextStatuses = getNextStatuses(ticket, user.role);
   const canManage = STAFF.includes(user.role);
-
   const canAccept =
     canManage &&
     ["NEW", "ASSIGNED"].includes(ticket.status) &&
@@ -256,20 +265,14 @@ export default function TicketDetail({
 
       <main className="dashboard-main">
         <div className="detail-shell">
-          <button
-            onClick={onBack}
-            className="back-link"
-          >
+          <button onClick={onBack} className="back-link">
             <ArrowLeft size={17} />
             กลับ Dashboard
           </button>
 
           <header className="detail-hero">
             <div>
-              <span className="page-eyebrow">
-                TICKET DETAILS
-              </span>
-
+              <span className="page-eyebrow">TICKET DETAILS</span>
               <h1>{ticket.ticket_no}</h1>
               <p>{ticket.subject}</p>
 
@@ -277,16 +280,12 @@ export default function TicketDetail({
                 <span>
                   <Clock3 size={14} />
                   {ticket.created_at
-                    ? new Date(ticket.created_at).toLocaleString(
-                        "th-TH"
-                      )
+                    ? new Date(ticket.created_at).toLocaleString("th-TH")
                     : "-"}
                 </span>
-
                 <span>
                   <UserRound size={14} />
-                  {ticket.requester_name ||
-                    `User ID: ${ticket.requester_id}`}
+                  {ticket.requester_name || `User ID: ${ticket.requester_id}`}
                 </span>
               </div>
             </div>
@@ -316,7 +315,6 @@ export default function TicketDetail({
                   <div className="section-heading-icon">
                     <Wrench size={18} />
                   </div>
-
                   <div>
                     <h2>ข้อมูลปัญหา</h2>
                     <p>รายละเอียดของคำขอรับบริการ</p>
@@ -368,6 +366,47 @@ export default function TicketDetail({
                 </div>
               </section>
 
+              {/* ไฟล์แนบ */}
+              <section className="surface-card action-section">
+                <div className="section-heading">
+                  <div className="section-heading-icon">
+                    <Paperclip size={18} />
+                  </div>
+                  <div>
+                    <h2>ไฟล์แนบ</h2>
+                    <p>รูปภาพหรือเอกสารที่แนบมากับ Ticket นี้</p>
+                  </div>
+                </div>
+
+                {attachments.length > 0 ? (
+                  <div className="attachment-list">
+                    {attachments.map((attachment) => (
+                      <div key={attachment.id} className="attachment-item">
+                        <div className="attachment-file-info">
+                          <Paperclip size={16} className="attachment-icon" />
+                          <span className="attachment-name">
+                            {attachment.original_name}
+                          </span>
+                          <span className="attachment-size">
+                            ({(Number(attachment.file_size || 0) / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => downloadAttachment(attachment)}
+                        >
+                          <Download size={15} /> ดาวน์โหลด
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted-empty">ไม่มีไฟล์แนบใน Ticket นี้</p>
+                )}
+              </section>
+
               {/* รับงาน */}
               {canAccept && (
                 <section className="surface-card action-section">
@@ -375,7 +414,6 @@ export default function TicketDetail({
                     <div className="section-heading-icon red-icon">
                       <CheckCircle2 size={18} />
                     </div>
-
                     <div>
                       <h2>การรับงาน</h2>
                       <p>ยืนยันการรับผิดชอบ Ticket นี้</p>
@@ -400,33 +438,23 @@ export default function TicketDetail({
                     <div className="section-heading-icon">
                       <ActivityIcon />
                     </div>
-
                     <div>
                       <h2>อัปเดตสถานะงาน</h2>
                       <p>บันทึกความคืบหน้าในการแก้ไขปัญหา</p>
                     </div>
                   </div>
 
-                  <form
-                    onSubmit={updateStatus}
-                    className="status-form"
-                  >
+                  <form onSubmit={updateStatus} className="status-form">
                     <label className="styled-field">
                       <span>สถานะใหม่</span>
-
                       <select
                         value={status}
-                        onChange={(event) =>
-                          setStatus(event.target.value)
-                        }
+                        onChange={(event) => setStatus(event.target.value)}
                         required
                       >
                         <option value={ticket.status}>
-                          {STATUS_LABELS[ticket.status] ||
-                            ticket.status}{" "}
-                          (ปัจจุบัน)
+                          {STATUS_LABELS[ticket.status] || ticket.status} (ปัจจุบัน)
                         </option>
-
                         {nextStatuses.map((item) => (
                           <option key={item} value={item}>
                             {STATUS_LABELS[item] || item}
@@ -437,12 +465,9 @@ export default function TicketDetail({
 
                     <label className="styled-field">
                       <span>หมายเหตุการดำเนินงาน</span>
-
                       <textarea
                         value={statusNote}
-                        onChange={(event) =>
-                          setStatusNote(event.target.value)
-                        }
+                        onChange={(event) => setStatusNote(event.target.value)}
                         rows={3}
                         placeholder="เช่น ตรวจสอบอุปกรณ์แล้ว พบสาย LAN ชำรุด"
                       />
@@ -450,9 +475,7 @@ export default function TicketDetail({
 
                     <button
                       type="submit"
-                      disabled={
-                        saving || status === ticket.status
-                      }
+                      disabled={saving || status === ticket.status}
                       className="primary-button"
                     >
                       <CheckCircle2 size={17} />
@@ -468,22 +491,16 @@ export default function TicketDetail({
                   <div className="section-heading-icon red-icon">
                     <MessageSquare size={18} />
                   </div>
-
                   <div>
                     <h2>ความคิดเห็นและวิธีแก้ไข</h2>
                     <p>บันทึกความคืบหน้าและแลกเปลี่ยนข้อมูล</p>
                   </div>
                 </div>
 
-                <form
-                  onSubmit={addComment}
-                  className="comment-form"
-                >
+                <form onSubmit={addComment} className="comment-form">
                   <textarea
                     value={comment}
-                    onChange={(event) =>
-                      setComment(event.target.value)
-                    }
+                    onChange={(event) => setComment(event.target.value)}
                     rows={3}
                     maxLength={10000}
                     placeholder="บันทึกความคืบหน้า หรือวิธีแก้ไขปัญหา..."
@@ -502,35 +519,25 @@ export default function TicketDetail({
 
                 <div className="comment-list">
                   {comments.map((item) => (
-                    <article
-                      key={item.id}
-                      className="comment-item"
-                    >
+                    <article key={item.id} className="comment-item">
                       <div className="comment-avatar">
-                        {(item.full_name || "U")
-                          .slice(0, 1)
-                          .toUpperCase()}
+                        {(item.full_name || "U").slice(0, 1).toUpperCase()}
                       </div>
 
                       <div className="comment-body">
                         <div className="comment-author">
                           {item.full_name}
                           <span>
-                            {new Date(
-                              item.created_at
-                            ).toLocaleString("th-TH")}
+                            {new Date(item.created_at).toLocaleString("th-TH")}
                           </span>
                         </div>
-
                         <p>{item.comment}</p>
                       </div>
                     </article>
                   ))}
 
                   {comments.length === 0 && (
-                    <p className="muted-empty">
-                      ยังไม่มีความคิดเห็น
-                    </p>
+                    <p className="muted-empty">ยังไม่มีความคิดเห็น</p>
                   )}
                 </div>
               </section>
@@ -543,7 +550,6 @@ export default function TicketDetail({
                   <div className="section-heading-icon red-icon">
                     <History size={18} />
                   </div>
-
                   <div>
                     <h2>ประวัติการดำเนินงาน</h2>
                     <p>Timeline ของ Ticket</p>
@@ -552,44 +558,30 @@ export default function TicketDetail({
 
                 <div className="history-timeline">
                   {history.map((item) => (
-                    <article
-                      key={item.id}
-                      className="history-item"
-                    >
+                    <article key={item.id} className="history-item">
                       <span className="timeline-dot" />
-
                       <b>
                         {item.old_status
-                          ? STATUS_LABELS[item.old_status] ||
-                            item.old_status
+                          ? STATUS_LABELS[item.old_status] || item.old_status
                           : "สร้าง Ticket"}{" "}
                         <span>→</span>{" "}
-                        {STATUS_LABELS[item.new_status] ||
-                          item.new_status}
+                        {STATUS_LABELS[item.new_status] || item.new_status}
                       </b>
 
-                      <p>
-                        ผู้ดำเนินการ: {item.full_name}
-                      </p>
+                      <p>ผู้ดำเนินการ: {item.full_name}</p>
 
                       {item.note && (
-                        <p className="history-note">
-                          {item.note}
-                        </p>
+                        <p className="history-note">{item.note}</p>
                       )}
 
                       <time>
-                        {new Date(
-                          item.created_at
-                        ).toLocaleString("th-TH")}
+                        {new Date(item.created_at).toLocaleString("th-TH")}
                       </time>
                     </article>
                   ))}
 
                   {history.length === 0 && (
-                    <p className="muted-empty">
-                      ยังไม่มีประวัติการดำเนินงาน
-                    </p>
+                    <p className="muted-empty">ยังไม่มีประวัติการดำเนินงาน</p>
                   )}
                 </div>
 
@@ -605,7 +597,6 @@ export default function TicketDetail({
 
               <div className="security-note">
                 <ShieldCheck size={18} />
-
                 <span>
                   <b>ข้อมูลการดำเนินงาน</b>
                   <small>
