@@ -1,0 +1,40 @@
+
+# Environment files - ทุกระดับ
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python Backend
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# React Frontend / Node.js
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Database backups
+*.dump
+*.backup
+*.bak
