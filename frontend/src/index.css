@@ -592,3 +592,68 @@ button:disabled { cursor: not-allowed; }
   font-weight: 400;
 }
 
+
+/* ========================================
+   Admin Settings - Form Controls
+======================================== */
+
+.admin-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dbe2ea;
+  border-radius: 8px;
+  outline: none;
+  background: #fff;
+  color: #172033;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.admin-input:disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
+}
+
+.admin-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border: 1px solid #dbe2ea;
+  border-radius: 8px;
+  background: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-button-danger {
+  color: #b91c1c;
+}
+
+.admin-button-success {
+  color: #166534;
+}
+
+.admin-button:hover {
+  background: #f8fafc;
+  border-color: #b8c4d3;
+}
+
+.admin-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-sort-order {
+  width: 80px;
+}
+
+.admin-back-button {
+  margin-left: 12px;
+}

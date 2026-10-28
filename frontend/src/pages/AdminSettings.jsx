@@ -17,15 +17,6 @@ import api from "../api/client";
 import AppSidebar from "../components/AppSidebar";
 import usePageTitle from "../hooks/usePageTitle";
 
-const inputStyle = {
-  width: "100%",
-  padding: "10px 12px",
-  border: "1px solid #dbe2ea",
-  borderRadius: 8,
-  outline: "none",
-  background: "#fff",
-  color: "#172033",
-};
 
 const buttonStyle = {
   display: "inline-flex",
@@ -290,7 +281,7 @@ export default function AdminSettings({
         {error || "หน้านี้อนุญาตเฉพาะ Admin"}
         <button
           type="button"
-          style={{ ...buttonStyle, marginLeft: 12 }}
+          className="admin-button admin-back-button"
           onClick={onBackDashboard}
         >
           กลับ Dashboard
@@ -460,7 +451,7 @@ export default function AdminSettings({
                     ชื่อหมวดหมู่ *
                   </span>
                   <input
-                    style={inputStyle}
+                    className="admin-input"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     placeholder="เช่น Hardware, Software, Network"
@@ -480,7 +471,7 @@ export default function AdminSettings({
                     หมวดหมู่หลัก (ไม่บังคับ)
                   </span>
                   <select
-                    style={inputStyle}
+                    className="admin-input"
                     value={parentId}
                     onChange={(event) => setParentId(event.target.value)}
                   >
@@ -530,7 +521,7 @@ export default function AdminSettings({
                 {editingId !== null && (
                   <button
                     type="button"
-                    style={buttonStyle}
+                    className="admin-button"
                     onClick={resetForm}
                   >
                     <X size={16} />
@@ -577,7 +568,7 @@ export default function AdminSettings({
 
                 <button
                   type="button"
-                  style={buttonStyle}
+                  className="admin-button"
                   onClick={loadCategories}
                   disabled={loading}
                 >
@@ -648,7 +639,7 @@ export default function AdminSettings({
                             >
                               <button
                                 type="button"
-                                style={buttonStyle}
+                                className="admin-button"
                                 onClick={() => startEdit(category)}
                               >
                                 <Save size={14} />
@@ -656,12 +647,11 @@ export default function AdminSettings({
                               </button>
                               <button
                                 type="button"
-                                style={{
-                                  ...buttonStyle,
-                                  color: category.is_active
-                                    ? "#b91c1c"
-                                    : "#166534",
-                                }}
+                                className={`admin-button ${
+                                  category.is_active
+                                    ? "admin-button-danger"
+                                    : "admin-button-success"
+                                }`}
                                 onClick={() => toggleCategory(category)}
                               >
                                 {category.is_active ? (
@@ -733,7 +723,7 @@ export default function AdminSettings({
                         <td><strong>{item.status_code}</strong></td>
                         <td>
                           <input
-                            style={inputStyle}
+                            className="admin-input"
                             value={item.status_name}
                             onChange={(event) =>
                               setSettingsData((prev) => ({
@@ -751,7 +741,7 @@ export default function AdminSettings({
                           <input
                             type="number"
                             min="0"
-                            style={{ ...inputStyle, width: 80 }}
+                            className="admin-input admin-sort-order"
                             value={item.sort_order}
                             onChange={(event) =>
                               setSettingsData((prev) => ({
@@ -912,7 +902,7 @@ export default function AdminSettings({
                 </label>
 
                 <input
-                  style={inputStyle}
+                  className="admin-input"
                   value={generalValues[item.setting_key] ?? ""}
                   onChange={(event) =>
                     setGeneralValues((prev) => ({
