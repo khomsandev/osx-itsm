@@ -17,19 +17,6 @@ import api from "../api/client";
 import AppSidebar from "../components/AppSidebar";
 import usePageTitle from "../hooks/usePageTitle";
 
-
-const buttonStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  padding: "9px 13px",
-  borderRadius: 8,
-  border: "1px solid #dbe2ea",
-  cursor: "pointer",
-  fontWeight: 600,
-};
-
 export default function AdminSettings({
   user,
   onBackDashboard,
