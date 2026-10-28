@@ -17,6 +17,7 @@ import AppSidebar from "../components/AppSidebar";
 import TicketDetail from "./TicketDetail";
 import UserManagement from "./UserManagement";
 import TicketCreatePage from "./TicketCreatePage";
+import AdminSettings from "./AdminSettings";
 import usePageTitle from "../hooks/usePageTitle";
 
 const STATUS = {
@@ -39,13 +40,18 @@ export default function Dashboard({ user, onLogout }) {
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [showUsers, setShowUsers] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   usePageTitle(
-    showUsers
-      ? "จัดการผู้ใช้งาน"
-      : selectedTicketId !== null
-        ? "รายละเอียด Ticket"
-        : "Dashboard"
+    showSettings
+      ? "ตั้งค่าระบบ"
+      : showUsers
+        ? "จัดการผู้ใช้งาน"
+        : selectedTicketId !== null
+          ? "รายละเอียด Ticket"
+          : showCreate
+            ? "แจ้งซ่อม"
+            : "Dashboard"
   );
 
   const loadTickets = useCallback(async () => {
@@ -72,11 +78,30 @@ export default function Dashboard({ user, onLogout }) {
   }
 
 
+  if (showSettings) {
+    return (
+      <AdminSettings
+        user={user}
+        onBackDashboard={() => setShowSettings(false)}
+        onShowUsers={() => {
+          setShowSettings(false);
+          setShowUsers(true);
+        }}
+        onLogout={onLogout}
+      />
+    );
+  }
+
   if (showUsers) {
     return (
       <UserManagement
         user={user}
         onBack={() => setShowUsers(false)}
+        onShowSettings={() => {
+          setShowUsers(false);
+          setShowSettings(true);
+        }}
+        onLogout={onLogout}
       />
     );
   }
@@ -113,11 +138,12 @@ export default function Dashboard({ user, onLogout }) {
   return (
     <div className="dashboard-shell">
       <AppSidebar
-      user={user}
-      onLogout={onLogout}
-      onCreateTicket={() => setShowCreate(true)}
-      onShowUsers={() => setShowUsers(true)}
-    />
+        user={user}
+        onLogout={onLogout}
+        onCreateTicket={() => setShowCreate(true)}
+        onShowUsers={() => setShowUsers(true)}
+        onShowSettings={() => setShowSettings(true)}
+      />
 
       <main className="dashboard-main">
         <header className="topbar">

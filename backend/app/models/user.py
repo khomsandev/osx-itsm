@@ -28,3 +28,12 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True
     )
+    department: Mapped[str | None] = mapped_column(
+    String(150),
+    nullable=True,
+    )
+
+    job_position: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )

@@ -71,8 +71,11 @@ def create_user(data: UserCreate, db: DbSession, user: CurrentUser):
         password_hash=password_hasher.hash(data.password),
         full_name=data.full_name,
         email=str(data.email) if data.email else None,
+        department=data.department.strip() if data.department else None,
+        job_position=data.job_position.strip() if data.job_position else None,
         role=data.role,
         is_active=True,
+
     )
 
     db.add(new_user)

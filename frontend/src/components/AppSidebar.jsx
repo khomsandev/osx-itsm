@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   ArrowLeft,
@@ -8,6 +7,7 @@ import {
   LogOut,
   Plus,
   Users,
+  Settings,
 } from "lucide-react";
 import logo from "../assets/logo.png";
 
@@ -23,6 +23,8 @@ export default function AppSidebar({
   onLogout,
   onCreateTicket,
   onShowUsers,
+  onShowSettings,
+  activeAdminSection = "users",
   onBackDashboard,
   variant = "dashboard",
 }) {
@@ -81,21 +83,37 @@ export default function AppSidebar({
               title="กลับ Dashboard"
             >
               <ArrowLeft size={18} />
-              <span className="sidebar-label">
-                กลับ Dashboard
-              </span>
+              <span className="sidebar-label">กลับ Dashboard</span>
             </button>
 
             <button
               type="button"
-              className="sidebar-link active"
+              className={`sidebar-link ${
+                activeAdminSection === "users" ? "active" : ""
+              }`}
+              onClick={onShowUsers}
               title="จัดการผู้ใช้งาน"
             >
               <Users size={18} />
-              <span className="sidebar-label">
-                จัดการผู้ใช้งาน
-              </span>
-              <span className="sidebar-link-dot" />
+              <span className="sidebar-label">จัดการผู้ใช้งาน</span>
+              {activeAdminSection === "users" && (
+                <span className="sidebar-link-dot" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              className={`sidebar-link ${
+                activeAdminSection === "settings" ? "active" : ""
+              }`}
+              onClick={onShowSettings}
+              title="ตั้งค่าระบบ"
+            >
+              <Settings size={18} />
+              <span className="sidebar-label">ตั้งค่าระบบ</span>
+              {activeAdminSection === "settings" && (
+                <span className="sidebar-link-dot" />
+              )}
             </button>
           </>
         ) : (
@@ -124,12 +142,10 @@ export default function AppSidebar({
               onClick={onCreateTicket}
             >
               <Plus size={18} />
-              <span className="sidebar-label">
-                แจ้งซ่อม / เปิด Ticket
-              </span>
+              <span className="sidebar-label">แจ้งซ่อม / เปิด Ticket</span>
             </button>
 
-            {user?.role === "ADMIN" && (
+            {user?.role === "ADMIN" && onShowUsers && (
               <button
                 type="button"
                 className="sidebar-link"
@@ -137,9 +153,19 @@ export default function AppSidebar({
                 onClick={onShowUsers}
               >
                 <Users size={18} />
-                <span className="sidebar-label">
-                  จัดการผู้ใช้งาน
-                </span>
+                <span className="sidebar-label">จัดการผู้ใช้งาน</span>
+              </button>
+            )}
+
+            {user?.role === "ADMIN" && onShowSettings && (
+              <button
+                type="button"
+                className="sidebar-link"
+                title="ตั้งค่าระบบ"
+                onClick={onShowSettings}
+              >
+                <Settings size={18} />
+                <span className="sidebar-label">ตั้งค่าระบบ</span>
               </button>
             )}
           </>

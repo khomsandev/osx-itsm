@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from pathlib import Path
 from fastapi import File, UploadFile
@@ -143,6 +143,7 @@ def get_ticket(ticket_id: int, db: DbSession, user: CurrentUser):
     return ticket_data
 
 
+
 @router.patch("/{ticket_id}/status", response_model=TicketResponse)
 def update_status(
     ticket_id: int,
@@ -158,26 +159,52 @@ def update_status(
     if user.role not in STAFF:
         raise HTTPException(403, "Permission denied")
 
-    if data.status == "CLOSED" and user.role not in MANAGERS:
-        raise HTTPException(403, "Only IT Manager or Admin can close tickets")
+    # ตรวจสอบว่าสถานะปลายทางมีอยู่และเปิดใช้งาน
+    target_status = db.execute(text("""
+        SELECT status_code
+        FROM public.ticket_statuses
+        WHERE status_code = :status
+          AND is_active = TRUE
+    """), {"status": data.status}).scalar_one_or_none()
 
-    if data.status == "CANCELLED" and user.role not in MANAGERS:
-        raise HTTPException(403, "Only IT Manager or Admin can cancel tickets")
-
-    if data.status not in TRANSITIONS.get(ticket.status, set()):
+    if target_status is None:
         raise HTTPException(
             400,
-            f"Cannot change status from {ticket.status} to {data.status}",
+            f"Status {data.status} does not exist or is inactive",
+        )
+
+    # ตรวจสอบกฎการเปลี่ยนสถานะตาม Role จาก PostgreSQL
+    allowed = db.execute(text("""
+        SELECT 1
+        FROM public.ticket_status_transitions
+        WHERE from_status = :from_status
+          AND to_status = :to_status
+          AND role = :role
+          AND is_active = TRUE
+        LIMIT 1
+    """), {
+        "from_status": ticket.status,
+        "to_status": data.status,
+        "role": user.role,
+    }).first()
+
+    if allowed is None:
+        raise HTTPException(
+            403,
+            f"Role {user.role} cannot change status "
+            f"from {ticket.status} to {data.status}",
         )
 
     old_status = ticket.status
+    now = datetime.now(timezone.utc)
+
     ticket.status = data.status
 
     if data.status == "RESOLVED":
-        ticket.resolved_at = datetime.now(timezone.utc)
+        ticket.resolved_at = now
 
     if data.status == "CLOSED":
-        ticket.closed_at = datetime.now(timezone.utc)
+        ticket.closed_at = now
 
     db.add(TicketHistory(
         ticket_id=ticket.id,
@@ -189,6 +216,7 @@ def update_status(
 
     db.commit()
     db.refresh(ticket)
+
     return ticket
 
 

@@ -6,6 +6,7 @@ from app.api.v1.tickets import router as tickets_router
 from app.api.v1.categories import router as categories_router
 from app.core.config import settings
 from app.api.v1 import users
+from app.api.v1.admin_settings import router as admin_settings_router
 
 app = FastAPI(title=settings.APP_NAME)
 
@@ -38,6 +39,11 @@ app.include_router(
 
 app.include_router(
     users.router,
+    prefix=settings.API_V1_PREFIX,
+)
+
+app.include_router(
+    admin_settings_router,
     prefix=settings.API_V1_PREFIX,
 )
 
