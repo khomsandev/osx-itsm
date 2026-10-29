@@ -1,4 +1,3 @@
-
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, EmailStr
@@ -38,3 +37,4 @@ class UserAdminResponse(BaseModel):
     job_position: str | None
     role: str
     is_active: bool
+    must_change_password: bool

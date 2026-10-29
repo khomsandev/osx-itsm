@@ -37,3 +37,9 @@ class User(Base):
         String(150),
         nullable=True,
     )
+
+    must_change_password: Mapped[bool] = mapped_column(
+    Boolean,
+    default=False,
+    nullable=False,
+)

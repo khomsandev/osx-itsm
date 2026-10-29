@@ -3,6 +3,7 @@ import { Headset, ShieldCheck } from "lucide-react";
 import api from "./api/client";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import ChangePassword from "./pages/ChangePassword";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -35,6 +36,19 @@ export default function App() {
     );
   }
 
-  if (!user) return <Login onLogin={setUser} />;
+  if (!user) {
+    return <Login onLogin={setUser} />;
+  }
+
+  if (user.must_change_password) {
+    return (
+      <ChangePassword
+        user={user}
+        onPasswordChanged={setUser}
+        onLogout={logout}
+      />
+    );
+  }
+
   return <Dashboard user={user} onLogout={logout} />;
 }

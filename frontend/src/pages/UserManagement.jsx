@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { 
   ArrowLeft, Check, CircleUserRound, LockKeyhole, Plus, 
-  RefreshCw, Search, ShieldCheck, UserPlus, Users, X 
+  RefreshCw, Search, ShieldCheck, UserPlus, Users, X,
+  FileUp, KeyRound, UserRoundPen, Download
 } from "lucide-react";
 import api from "../api/client";
 import AppSidebar from "../components/AppSidebar";
@@ -36,6 +37,9 @@ export default function UserManagement({ user, onBack, onShowUsers, onShowSettin
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [showUsersState, setShowUsersState] = useState(false);
   const [showSettingsState, setShowSettingsState] = useState(false);
+  const importFileRef = useRef(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   // Navigate to settings view
   if (showSettingsState) {
@@ -156,6 +160,108 @@ export default function UserManagement({ user, onBack, onShowUsers, onShowSettin
     }
   }
 
+  async function handleImportFile(event) {
+    const file = event.target.files?.[0];
+
+    // ให้เลือกไฟล์เดิมซ้ำได้ในครั้งต่อไป
+    event.target.value = "";
+
+    if (!file) return;
+
+    const extension = file.name.split(".").pop()?.toLowerCase();
+
+    if (!["xlsx", "csv"].includes(extension)) {
+      setError("รองรับเฉพาะไฟล์ Excel (.xlsx) และ CSV (.csv)");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("ไฟล์ต้องมีขนาดไม่เกิน 5 MB");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `ยืนยันนำเข้าผู้ใช้งานจากไฟล์ "${file.name}" หรือไม่?\n\n` +
+      "ระบบจะข้าม Username ที่มีอยู่แล้ว และไม่แก้ไขข้อมูลเดิม"
+    );
+
+    if (!confirmed) return;
+
+    setError("");
+    setMessage("");
+    setImportResult(null);
+    setImportLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await api.post("/users/import", formData);
+      const result = response.data;
+
+      setImportResult(result);
+
+      setMessage(
+        `นำเข้าเสร็จสิ้น: สำเร็จ ${result.created} รายการ, ` +
+        `ข้าม ${result.skipped} รายการ, ` +
+        `ผิดพลาด ${result.failed} รายการ`
+      );
+
+      await loadUsers();
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ||
+        "นำเข้าไฟล์ไม่สำเร็จ กรุณาตรวจสอบไฟล์และลองอีกครั้ง"
+      );
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
+  
+  async function handleResetPassword(target) {
+    const temporaryPassword = window.prompt(
+      `กำหนด Password ชั่วคราวสำหรับ ${target.username}\n` +
+      "ต้องมีความยาวอย่างน้อย 8 ตัวอักษร"
+    );
+
+    // กด Cancel
+    if (temporaryPassword === null) return;
+
+    if (temporaryPassword.length < 8 || temporaryPassword.length > 128) {
+      setError("Password ต้องมีความยาว 8–128 ตัวอักษร");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `ยืนยัน Reset Password ของ ${target.username} หรือไม่?\n` +
+      "ผู้ใช้จะต้องเปลี่ยน Password ใหม่เมื่อ Login ครั้งถัดไป"
+    );
+
+    if (!confirmed) return;
+
+    setError("");
+    setMessage("");
+
+    try {
+      await api.post(`/users/${target.id}/reset-password`, {
+        password: temporaryPassword,
+      });
+
+      setMessage(
+        `Reset Password ของ ${target.username} เรียบร้อยแล้ว ` +
+        "ผู้ใช้ต้องเปลี่ยน Password เมื่อ Login ครั้งถัดไป"
+      );
+
+      await loadUsers();
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ||
+        "Reset Password ไม่สำเร็จ"
+      );
+    }
+  }
+
   const keyword = search.toLowerCase();
   const filteredUsers = users.filter((item) => 
     item.username.toLowerCase().includes(keyword) || 
@@ -212,13 +318,101 @@ export default function UserManagement({ user, onBack, onShowUsers, onShowSettin
               <h1>จัดการผู้ใช้งาน</h1>
               <p>เพิ่มบัญชี กำหนดบทบาท และควบคุมสิทธิ์การเข้าใช้งานระบบ</p>
             </div>
-            <button className="primary-button" onClick={openCreateForm}>
-              <UserPlus size={18} /> เพิ่มผู้ใช้งาน
-            </button>
+
+            <div className="form-actions">
+            <a
+                href="/user_import_template.xlsx"
+                download
+                className="secondary-button"
+              >
+                <Download size={16} />
+                Download Excel Template
+              </a>
+
+              <a
+                href="/user_import_template.csv"
+                download
+                className="secondary-button"
+              >
+                <Download size={16} />
+                Download CSV Template
+              </a>
+
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".xlsx,.csv"
+                onChange={handleImportFile}
+                disabled={importLoading}
+                hidden
+              />
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => importFileRef.current?.click()}
+                disabled={importLoading}
+              >
+                <FileUp size={17} />
+                {importLoading ? "กำลังนำเข้า..." : "Import Excel / CSV"}
+              </button>
+
+              <button
+                type="button"
+                className="primary-button"
+                onClick={openCreateForm}
+              >
+                <UserPlus size={18} />
+                เพิ่มผู้ใช้งาน
+              </button>
+            </div>
           </section>
 
           {error && <div role="alert" className="error-banner">{error}</div>}
           {message && <div className="success-banner"><Check size={17} />{message}</div>}
+          {importResult && (
+            <section className="surface-card" style={{ marginBottom: 16 }}>
+              <h3>ผลการนำเข้าผู้ใช้งาน</h3>
+
+              <p>
+                ทั้งหมด {importResult.total} รายการ
+                {" · "}สำเร็จ {importResult.created}
+                {" · "}ข้าม {importResult.skipped}
+                {" · "}ผิดพลาด {importResult.failed}
+              </p>
+
+              <div className="table-scroll">
+                <table className="modern-table">
+                  <thead>
+                    <tr>
+                      <th>แถว</th>
+                      <th>Username</th>
+                      <th>ผลลัพธ์</th>
+                      <th>รายละเอียด</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {importResult.results.map((item, index) => (
+                      <tr key={`${item.row}-${index}`}>
+                        <td>{item.row}</td>
+                        <td>{item.username || "-"}</td>
+                        <td>
+                          {item.status === "created"
+                            ? "สำเร็จ"
+                            : item.status === "skipped"
+                              ? "ข้าม"
+                              : "ผิดพลาด"}
+                        </td>
+                        <td>{item.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
 
           {/* Stats Grid */}
           <section className="stats-grid admin-stats">
@@ -451,9 +645,30 @@ export default function UserManagement({ user, onBack, onShowUsers, onShowSettin
                         </span>
                       </td>
                       <td>
-                        <button onClick={() => openEditForm(item)} className="table-action">
-                          แก้ไข <ArrowLeft className="edit-arrow" size={14} />
-                        </button>
+                        <div className="form-actions">
+                          <button
+                            type="button"
+                            onClick={() => openEditForm(item)}
+                            className="table-action"
+                          >
+                            <UserRoundPen className="edit-arrow" size={14} /> แก้ไข
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleResetPassword(item)}
+                            className="table-action"
+                          >
+                            <KeyRound size={14} />
+                            Reset Password
+                          </button>
+                        </div>
+
+                        {item.must_change_password && (
+                          <small className="muted-text">
+                            รอเปลี่ยน Password
+                          </small>
+                        )}
                       </td>
                     </tr>
                   ))}

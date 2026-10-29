@@ -575,7 +575,7 @@ export default function AdminSettings({
                 <table className="modern-table">
                   <thead>
                     <tr>
-                      <th>ID</th>
+                      {/* <th>ID</th> */}
                       <th>ชื่อหมวดหมู่</th>
                       <th>หมวดหมู่หลัก</th>
                       <th>สถานะ</th>
@@ -590,7 +590,7 @@ export default function AdminSettings({
 
                       return (
                         <tr key={category.id}>
-                          <td>{category.id}</td>
+                          {/* <td>{category.id}</td> */}
                           <td>
                             <strong>{category.name}</strong>
                           </td>
@@ -667,7 +667,7 @@ export default function AdminSettings({
             )}
           </section>
 
-          <section
+          {/* <section
             className="surface-card"
             style={{ padding: 20, marginTop: 20 }}
           >
@@ -676,7 +676,7 @@ export default function AdminSettings({
               การตั้งค่า Workflow, สิทธิ์ตามสถานะ Ticket และค่าทั่วไป
               จะเพิ่มเมื่อมี API และฐานข้อมูลรองรับ เพื่อให้บันทึกการตั้งค่าได้จริง
             </p>
-          </section>
+          </section> */}
 
           
           {/* Ticket Workflow */}
