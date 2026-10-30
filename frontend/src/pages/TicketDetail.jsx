@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect,useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   UserRound,
   Wrench,
+  X,
 } from "lucide-react";
 
 import api from "../api/client";
@@ -81,6 +82,8 @@ export default function TicketDetail({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [statusFiles, setStatusFiles] = useState([]);
+  const statusFileInputRef = useRef(null);
 
   usePageTitle(
     ticket?.ticket_no ? `Ticket ${ticket.ticket_no}` : "รายละเอียด Ticket"
@@ -132,6 +135,61 @@ export default function TicketDetail({
     }
   }
 
+  const MAX_STATUS_FILES = 5;
+  const MAX_STATUS_FILE_SIZE = 10 * 1024 * 1024;
+
+  const ALLOWED_STATUS_EXTENSIONS = [
+    "jpg", "jpeg", "png", "pdf",
+    "doc", "docx", "xls", "xlsx",
+    "txt", "csv", "log", "zip",
+  ];
+
+  function handleStatusFilesChange(event) {
+    const selected = Array.from(event.target.files || []);
+    event.target.value = "";
+
+    if (!selected.length) return;
+
+    const nextFiles = [...statusFiles];
+    let message = "";
+
+    for (const file of selected) {
+      const extension = file.name.split(".").pop().toLowerCase();
+
+      if (!ALLOWED_STATUS_EXTENSIONS.includes(extension)) {
+        message = `ไม่รองรับไฟล์ ${file.name}`;
+        continue;
+      }
+
+      if (file.size > MAX_STATUS_FILE_SIZE) {
+        message = `ไฟล์ ${file.name} มีขนาดเกิน 10 MB`;
+        continue;
+      }
+
+      if (nextFiles.some(
+        (item) => item.name === file.name && item.size === file.size
+      )) {
+        continue;
+      }
+
+      if (nextFiles.length >= MAX_STATUS_FILES) {
+        message = `แนบไฟล์ได้ไม่เกิน ${MAX_STATUS_FILES} ไฟล์ต่อการอัปเดต`;
+        break;
+      }
+
+      nextFiles.push(file);
+    }
+
+    setStatusFiles(nextFiles);
+    setError(message);
+  }
+
+  function removeStatusFile(index) {
+    setStatusFiles((current) =>
+      current.filter((_, i) => i !== index)
+    );
+  }
+
   async function updateStatus(event) {
     event.preventDefault();
 
@@ -144,17 +202,33 @@ export default function TicketDetail({
     setError("");
 
     try {
-      await api.patch(`/tickets/${ticketId}/status`, {
-        status,
-        note: statusNote.trim() || null,
+      const formData = new FormData();
+
+      formData.append("status", status);
+      formData.append("note", statusNote.trim());
+
+      statusFiles.forEach((file) => {
+        formData.append("files", file);
       });
 
+      await api.patch(
+        `/tickets/${ticketId}/status`,
+        formData
+      );
+
       setStatusNote("");
+      setStatusFiles([]);
+
+      if (statusFileInputRef.current) {
+        statusFileInputRef.current.value = "";
+      }
+
       await loadDetail();
       await onUpdated?.();
     } catch (err) {
       setError(
-        err.response?.data?.detail || "ไม่สามารถเปลี่ยนสถานะ Ticket ได้"
+        err.response?.data?.detail ||
+        "ไม่สามารถอัปเดตสถานะหรือแนบไฟล์ได้"
       );
     } finally {
       setSaving(false);
@@ -254,10 +328,11 @@ export default function TicketDetail({
 
   const nextStatuses = getNextStatuses(ticket, user.role);
   const canManage = STAFF.includes(user.role);
+
   const canAccept =
     canManage &&
-    ["NEW", "ASSIGNED"].includes(ticket.status) &&
-    (!ticket.assigned_to || ticket.assigned_to === user.id);
+    ticket.status === "NEW" &&
+    !ticket.assigned_to;
 
   return (
     <div className="dashboard-shell">
@@ -421,6 +496,7 @@ export default function TicketDetail({
                   </div>
 
                   <button
+                    type="button"
                     onClick={acceptTicket}
                     disabled={saving}
                     className="primary-button"
@@ -428,6 +504,27 @@ export default function TicketDetail({
                     <CheckCircle2 size={17} />
                     {saving ? "กำลังบันทึก..." : "รับงานนี้"}
                   </button>
+                </section>
+              )}
+
+              {/* แสดงเมื่อมีผู้รับผิดชอบแล้ว */}
+              {canManage && ticket.assigned_to && (
+                <section className="surface-card action-section">
+                  <div className="section-heading">
+                    <div className="section-heading-icon">
+                      <UserRound size={18} />
+                    </div>
+                    <div>
+                      <h2>ผู้รับผิดชอบงาน</h2>
+                      <p>
+                        {ticket.assigned_to_name ||
+                          `User ID: ${ticket.assigned_to}`}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="muted-empty">
+                    Ticket นี้มีผู้รับผิดชอบแล้ว
+                  </p>
                 </section>
               )}
 
@@ -472,6 +569,45 @@ export default function TicketDetail({
                         placeholder="เช่น ตรวจสอบอุปกรณ์แล้ว พบสาย LAN ชำรุด"
                       />
                     </label>
+                    <label className="styled-field">
+                        <span>ไฟล์แนบประกอบการอัปเดต</span>
+                        <input
+                          ref={statusFileInputRef}
+                          type="file"
+                          multiple
+                          accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.log,.zip"
+                          onChange={handleStatusFilesChange}
+                          disabled={saving}
+                        />
+                        <small>
+                          รองรับ JPG, PNG, PDF, Office, TXT, CSV, LOG และ ZIP
+                          ขนาดไม่เกิน 10 MB ต่อไฟล์ สูงสุด 5 ไฟล์
+                        </small>
+                      </label>
+                      {statusFiles.length > 0 && (
+                        <div className="status-attachment-list">
+                          {statusFiles.map((file, index) => (
+                            <div
+                              key={`${file.name}-${file.size}-${index}`}
+                              className="status-attachment-item"
+                            >
+                              <Paperclip size={16} />
+                              <span>
+                                {file.name} (
+                                {(file.size / 1024 / 1024).toFixed(2)} MB)
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => removeStatusFile(index)}
+                                disabled={saving}
+                                aria-label={`ลบไฟล์ ${file.name}`}
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                     <button
                       type="submit"
@@ -577,6 +713,33 @@ export default function TicketDetail({
                       <time>
                         {new Date(item.created_at).toLocaleString("th-TH")}
                       </time>
+                      {item.attachments?.length > 0 && (
+                        // ไฟล์แนบในประวัติการดำเนินงาน
+                        <div className="attachment-list">
+                          {item.attachments.map((attachment) => (
+                            <div
+                              key={attachment.id}
+                              className="attachment-item"
+                            >
+                              <div className="attachment-file-info">
+                                <Paperclip size={16} />
+
+                                <span className="attachment-name">
+                                  {attachment.original_name}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={() => downloadAttachment(attachment)}
+                              >
+                                <Download size={15} />
+                                ดาวน์โหลด
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                    )}
                     </article>
                   ))}
 

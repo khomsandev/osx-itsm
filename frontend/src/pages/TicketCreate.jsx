@@ -207,11 +207,8 @@ export default function TicketCreate({ onCreated }) {
             >
               <Upload size={16} /> เลือกไฟล์
             </button>
-            <span className="muted-empty">สูงสุด {MAX_FILES} ไฟล์, ไฟล์ละไม่เกิน 10 MB</span>
+            <span className="muted-empty"> สูงสุด {MAX_FILES} ไฟล์, ไฟล์ละไม่เกิน 10 MB | รองรับ JPG, PNG, PDF, DOC, DOCX, XLSX และ TXT</span>
           </div>
-          <p className="muted-empty">
-            รองรับ JPG, PNG, PDF, DOC, DOCX, XLSX และ TXT
-          </p>
           {files.length > 0 && (
             <ul className="selected-attachment-list">
               {files.map((file, index) => (

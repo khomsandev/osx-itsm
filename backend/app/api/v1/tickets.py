@@ -2,12 +2,9 @@ import os
 import uuid
 
 from datetime import datetime, timezone
-
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, File, Form, UploadFile
 from sqlalchemy import select, text
-
 from pathlib import Path
-from fastapi import File, UploadFile
 from fastapi.responses import FileResponse
 
 from app.models.ticket_attachment import TicketAttachment
@@ -144,12 +141,15 @@ def get_ticket(ticket_id: int, db: DbSession, user: CurrentUser):
 
 
 
+
 @router.patch("/{ticket_id}/status", response_model=TicketResponse)
-def update_status(
+async def update_status(
     ticket_id: int,
-    data: StatusUpdate,
     db: DbSession,
     user: CurrentUser,
+    status_value: str = Form(..., alias="status"),
+    note: str | None = Form(default=None),
+    files: list[UploadFile] = File(default=[]),
 ):
     ticket = db.get(Ticket, ticket_id)
 
@@ -159,65 +159,155 @@ def update_status(
     if user.role not in STAFF:
         raise HTTPException(403, "Permission denied")
 
-    # ตรวจสอบว่าสถานะปลายทางมีอยู่และเปิดใช้งาน
-    target_status = db.execute(text("""
-        SELECT status_code
-        FROM public.ticket_statuses
-        WHERE status_code = :status
-          AND is_active = TRUE
-    """), {"status": data.status}).scalar_one_or_none()
+    # ตรวจสอบสถานะเป้าหมายจากฐานข้อมูลเหมือนระบบเดิม
+    target_status = db.execute(
+        text("""
+            SELECT status_code
+            FROM public.ticket_statuses
+            WHERE status_code = :status
+              AND is_active = TRUE
+        """),
+        {"status": status_value},
+    ).scalar_one_or_none()
 
     if target_status is None:
         raise HTTPException(
-            400,
-            f"Status {data.status} does not exist or is inactive",
+            400, f"Status {status_value} does not exist or is inactive"
         )
 
-    # ตรวจสอบกฎการเปลี่ยนสถานะตาม Role จาก PostgreSQL
-    allowed = db.execute(text("""
-        SELECT 1
-        FROM public.ticket_status_transitions
-        WHERE from_status = :from_status
-          AND to_status = :to_status
-          AND role = :role
-          AND is_active = TRUE
-        LIMIT 1
-    """), {
-        "from_status": ticket.status,
-        "to_status": data.status,
-        "role": user.role,
-    }).first()
+    # ตรวจสอบ Workflow และ Role เหมือนระบบเดิม
+    allowed = db.execute(
+        text("""
+            SELECT 1
+            FROM public.ticket_status_transitions
+            WHERE from_status = :from_status
+              AND to_status = :to_status
+              AND role = :role
+              AND is_active = TRUE
+            LIMIT 1
+        """),
+        {
+            "from_status": ticket.status,
+            "to_status": status_value,
+            "role": user.role,
+        },
+    ).first()
 
     if allowed is None:
         raise HTTPException(
             403,
             f"Role {user.role} cannot change status "
-            f"from {ticket.status} to {data.status}",
+            f"from {ticket.status} to {status_value}",
         )
 
+    # ตรวจสอบไฟล์ก่อนเริ่มเขียนลงดิสก์
+    if len(files) > MAX_FILES:
+        raise HTTPException(
+            400, f"เลือกไฟล์ได้ไม่เกิน {MAX_FILES} ไฟล์"
+        )
+
+    prepared_files = []
+    total_size = 0
+
+    for upload in files:
+        if not upload.filename:
+            continue
+
+        original_name = Path(upload.filename).name
+        extension = Path(original_name).suffix.lower()
+
+        if not original_name or extension not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                400, f"ไม่อนุญาตให้อัปโหลดไฟล์ {original_name}"
+            )
+
+        content = await upload.read(MAX_FILE_SIZE + 1)
+
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                413, f"ไฟล์ {original_name} มีขนาดเกิน 10 MB"
+            )
+
+        total_size += len(content)
+
+        if total_size > MAX_FILES * MAX_FILE_SIZE:
+            raise HTTPException(413, "ขนาดไฟล์รวมเกินกำหนด")
+
+        prepared_files.append(
+            (
+                original_name,
+                extension,
+                content,
+                upload.content_type or "application/octet-stream",
+            )
+        )
+
+    # บันทึกสถานะ ประวัติ และข้อมูลไฟล์ใน transaction เดียว
     old_status = ticket.status
     now = datetime.now(timezone.utc)
+    created_paths = []
 
-    ticket.status = data.status
+    try:
+        ticket.status = status_value
 
-    if data.status == "RESOLVED":
-        ticket.resolved_at = now
+        if status_value == "RESOLVED":
+            ticket.resolved_at = now
 
-    if data.status == "CLOSED":
-        ticket.closed_at = now
+        if status_value == "CLOSED":
+            ticket.closed_at = now
 
-    db.add(TicketHistory(
-        ticket_id=ticket.id,
-        changed_by=user.id,
-        old_status=old_status,
-        new_status=data.status,
-        note=data.note,
-    ))
+        history = TicketHistory(
+            ticket_id=ticket.id,
+            changed_by=user.id,
+            old_status=old_status,
+            new_status=status_value,
+            note=note,
+        )
+        db.add(history)
+        db.flush()  # ให้ history.id พร้อมใช้ก่อนผูกไฟล์
 
-    db.commit()
-    db.refresh(ticket)
+        if prepared_files:
+            target_dir = UPLOAD_DIR / str(ticket.id)
+            target_dir.mkdir(parents=True, exist_ok=True)
 
-    return ticket
+            for original_name, extension, content, content_type in prepared_files:
+                stored_name = f"{uuid.uuid4().hex}{extension}"
+                file_path = target_dir / stored_name
+
+                with file_path.open("xb") as output:
+                    output.write(content)
+
+                created_paths.append(file_path)
+
+                db.add(
+                    TicketAttachment(
+                        ticket_id=ticket.id,
+                        history_id=history.id,
+                        uploaded_by=user.id,
+                        original_name=original_name,
+                        stored_name=stored_name,
+                        content_type=content_type,
+                        file_size=len(content),
+                    )
+                )
+
+        db.commit()
+        db.refresh(ticket)
+        return ticket
+
+    except Exception:
+        db.rollback()
+
+        # ลบไฟล์ที่เขียนลงดิสก์แล้ว หาก transaction ล้มเหลว
+        for file_path in created_paths:
+            file_path.unlink(missing_ok=True)
+
+        raise
+
+    finally:
+        for upload in files:
+            await upload.close()
+
 
 
 @router.post("/{ticket_id}/comments", status_code=201)
@@ -286,6 +376,7 @@ def list_comments(
         for comment, full_name in rows
     ]
 
+
 @router.get("/{ticket_id}/history")
 def list_ticket_history(
     ticket_id: int,
@@ -297,8 +388,7 @@ def list_ticket_history(
     if ticket is None:
         raise HTTPException(404, "Ticket not found")
 
-    if user.role == "USER" and ticket.requester_id != user.id:
-        raise HTTPException(403, "Permission denied")
+    check_ticket_access(ticket, user)
 
     rows = db.execute(
         select(TicketHistory, User.full_name)
@@ -306,6 +396,29 @@ def list_ticket_history(
         .where(TicketHistory.ticket_id == ticket_id)
         .order_by(TicketHistory.created_at.asc())
     ).all()
+
+    history_ids = [history.id for history, _ in rows]
+
+    attachments_by_history = {}
+
+    if history_ids:
+        attachments = db.scalars(
+            select(TicketAttachment)
+            .where(TicketAttachment.history_id.in_(history_ids))
+            .order_by(TicketAttachment.created_at.asc())
+        ).all()
+
+        for item in attachments:
+            attachments_by_history.setdefault(
+                item.history_id, []
+            ).append({
+                "id": item.id,
+                "ticket_id": item.ticket_id,
+                "original_name": item.original_name,
+                "content_type": item.content_type,
+                "file_size": item.file_size,
+                "created_at": item.created_at,
+            })
 
     return [
         {
@@ -316,6 +429,9 @@ def list_ticket_history(
             "new_status": history.new_status,
             "note": history.note,
             "created_at": history.created_at,
+            "attachments": attachments_by_history.get(
+                history.id, []
+            ),
         }
         for history, full_name in rows
     ]

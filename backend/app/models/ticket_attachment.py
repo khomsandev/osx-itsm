@@ -1,11 +1,14 @@
-
 from datetime import datetime
-
-from sqlalchemy import DateTime, ForeignKey, Integer, String, BigInteger, func
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
-
 from app.core.database import Base
-
 
 class TicketAttachment(Base):
     __tablename__ = "ticket_attachments"
@@ -18,6 +21,14 @@ class TicketAttachment(Base):
         ForeignKey("tickets.id", ondelete="CASCADE"),
         index=True,
         nullable=False,
+    )
+
+    # ประวัติการอัปเดตที่ไฟล์นี้แนบมาด้วย
+    # nullable=True เพื่อรองรับไฟล์แนบเดิมที่มีอยู่แล้ว
+    history_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ticket_history.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
     )
 
     uploaded_by: Mapped[int] = mapped_column(
