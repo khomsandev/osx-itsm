@@ -1,0 +1,31 @@
+
+# ==========================================
+# IT Service Desk - Backend Requirements
+# Python / FastAPI / PostgreSQL
+# ==========================================
+
+# FastAPI Framework
+fastapi
+uvicorn[standard]
+
+# Database - PostgreSQL
+sqlalchemy
+psycopg2-binary
+
+# Database Migration
+alembic
+
+# Configuration and Environment
+pydantic
+pydantic-settings
+python-dotenv
+
+# Authentication and JWT
+python-jose[cryptography]
+pwdlib[argon2]
+
+# Form Data Support
+python-multipart
+
+# Email Validation
+email-validator
