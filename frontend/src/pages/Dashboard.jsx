@@ -10,6 +10,7 @@ import {
   Plus,
   RefreshCw,
   ShieldCheck,
+  Package,
 } from "lucide-react";
 
 import api from "../api/client";
@@ -18,6 +19,7 @@ import TicketDetail from "./TicketDetail";
 import UserManagement from "./UserManagement";
 import TicketCreatePage from "./TicketCreatePage";
 import AdminSettings from "./AdminSettings";
+import AssetManagement from "./AssetManagement";
 import usePageTitle from "../hooks/usePageTitle";
 
 const STATUS = {
@@ -46,6 +48,7 @@ export default function Dashboard({ user, onLogout }) {
   const [showUsers, setShowUsers] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAssets, setShowAssets] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -58,7 +61,9 @@ export default function Dashboard({ user, onLogout }) {
   const paginatedTickets = tickets.slice(startIndex, endIndex);
 
   usePageTitle(
-    showSettings
+  showAssets
+    ? "IT Asset"
+    : showSettings
       ? "ตั้งค่าระบบ"
       : showUsers
         ? "จัดการผู้ใช้งาน"
@@ -67,7 +72,7 @@ export default function Dashboard({ user, onLogout }) {
           : showCreate
             ? "แจ้งซ่อม"
             : "Dashboard"
-  );
+);
 
   const loadTickets = useCallback(async () => {
     try {
@@ -112,6 +117,35 @@ export default function Dashboard({ user, onLogout }) {
     setShowCreate(false);
     setCurrentPage(1);
     await loadTickets();
+  }
+
+  // IT Asset Page
+  if (showAssets) {
+    return (
+      <AssetManagement
+        user={user}
+        onLogout={onLogout}
+        onBackDashboard={() => {
+          setShowAssets(false);
+          setShowCreate(false);
+          setShowUsers(false);
+          setShowSettings(false);
+          setSelectedTicketId(null);
+        }}
+        onCreateTicket={() => {
+          setShowAssets(false);
+          setShowCreate(true);
+        }}
+        onShowUsers={() => {
+          setShowAssets(false);
+          setShowUsers(true);
+        }}
+        onShowSettings={() => {
+          setShowAssets(false);
+          setShowSettings(true);
+        }}
+      />
+    );
   }
 
   // Conditional Views for Sub-pages
@@ -202,6 +236,8 @@ export default function Dashboard({ user, onLogout }) {
       <AppSidebar
         user={user}
         onLogout={onLogout}
+        activeSection="dashboard"
+        onShowAssets={() => setShowAssets(true)}
         onCreateTicket={() => setShowCreate(true)}
         onShowUsers={() => setShowUsers(true)}
         onShowSettings={() => setShowSettings(true)}

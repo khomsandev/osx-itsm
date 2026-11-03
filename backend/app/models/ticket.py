@@ -31,6 +31,11 @@ class Ticket(Base):
         ForeignKey("users.id"), nullable=True
     )
 
+    asset_id: Mapped[int | None] = mapped_column(
+        ForeignKey("assets.id"),
+        nullable=True,
+    )
+
     priority: Mapped[str] = mapped_column(
         String(20), default="MEDIUM"
     )

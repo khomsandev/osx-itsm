@@ -7,6 +7,7 @@ from app.api.v1.categories import router as categories_router
 from app.core.config import settings
 from app.api.v1 import users
 from app.api.v1.admin_settings import router as admin_settings_router
+from app.api.v1.assets import router as assets_router
 
 app = FastAPI(title=settings.APP_NAME)
 
@@ -47,7 +48,11 @@ app.include_router(
     prefix=settings.API_V1_PREFIX,
 )
 
-
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+app.include_router(
+    assets_router,
+    prefix=settings.API_V1_PREFIX,
+)

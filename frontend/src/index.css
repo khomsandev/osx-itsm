@@ -868,3 +868,138 @@ button:disabled { cursor: not-allowed; }
     flex-wrap: wrap;
   }
 }
+
+
+/* ========================================
+   IT Asset - Search & Filter Layout
+======================================== */
+
+.asset-filter-bar {
+  display: grid;
+  grid-template-columns:
+    minmax(260px, 1fr)
+    minmax(150px, 180px)
+    minmax(140px, 170px)
+    auto
+    auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 14px 20px;
+  border-bottom: 1px solid #edf0f6;
+  background: #ffffff;
+}
+
+/* ช่องค้นหา */
+.asset-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  color: #8492a6;
+  border: 1px solid #dfe6f0;
+  border-radius: 9px;
+  background: #fbfcfe;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.asset-search:focus-within {
+  border-color: #4c82d6;
+  box-shadow: 0 0 0 3px #2466cf12;
+  background: #ffffff;
+}
+
+.asset-search svg {
+  flex: 0 0 auto;
+}
+
+.asset-search input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  color: #253b5b;
+  background: transparent;
+  font-size: 11px;
+}
+
+.asset-search input::placeholder {
+  color: #9aa5b5;
+}
+
+/* Dropdown ประเภทและสถานะ */
+.asset-filter-bar select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 30px 0 12px;
+  border: 1px solid #dfe6f0;
+  border-radius: 9px;
+  outline: none;
+  color: #354761;
+  background-color: #fbfcfe;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.asset-filter-bar select:focus {
+  border-color: #4c82d6;
+  box-shadow: 0 0 0 3px #2466cf12;
+}
+
+/* ปุ่มค้นหาและล้างค่า */
+.asset-filter-bar .primary-button,
+.asset-filter-bar .secondary-button {
+  min-width: 0;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+/* Tablet */
+@media (max-width: 1100px) {
+  .asset-filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .asset-search {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Mobile */
+@media (max-width: 760px) {
+  .asset-filter-bar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .asset-search {
+    grid-column: auto;
+  }
+
+  .asset-filter-bar select {
+    width: 100%;
+  }
+
+  .asset-filter-bar .primary-button,
+  .asset-filter-bar .secondary-button {
+    width: 100%;
+  }
+}
+
+/* Mobile: วางปุ่มค้นหาและล้างค่าไว้แถวเดียวกัน */
+@media (max-width: 760px) {
+  .asset-filter-bar .primary-button {
+    grid-row: auto;
+  }
+}

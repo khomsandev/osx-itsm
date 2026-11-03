@@ -27,6 +27,7 @@ class TicketResponse(BaseModel):
     priority: str
     status: str
     created_at: datetime
+    asset_id: int | None = None
 
 
 class TicketDetailResponse(TicketResponse):

@@ -8,6 +8,7 @@ import {
   Plus,
   Users,
   Settings,
+  Package,
 } from "lucide-react";
 import logo from "../assets/logo.png";
 
@@ -24,6 +25,8 @@ export default function AppSidebar({
   onCreateTicket,
   onShowUsers,
   onShowSettings,
+  onShowAssets,
+  activeSection = "dashboard",
   activeAdminSection = "users",
   onBackDashboard,
   variant = "dashboard",
@@ -120,7 +123,9 @@ export default function AppSidebar({
           <>
             <button
               type="button"
-              className="sidebar-link active"
+              className={`sidebar-link ${
+                activeSection === "dashboard" ? "active" : ""
+              }`}
               title="Dashboard"
               onClick={() => {
                 if (onBackDashboard) {
@@ -132,8 +137,30 @@ export default function AppSidebar({
             >
               <ClipboardList size={18} />
               <span className="sidebar-label">Dashboard</span>
-              <span className="sidebar-link-dot" />
+
+              {activeSection === "dashboard" && (
+                <span className="sidebar-link-dot" />
+              )}
             </button>
+
+            {["IT_SUPPORT", "IT_MANAGER", "ADMIN"].includes(user?.role) &&
+              onShowAssets && (
+                <button
+                  type="button"
+                  className={`sidebar-link ${
+                    activeSection === "assets" ? "active" : ""
+                  }`}
+                  title="IT Asset"
+                  onClick={onShowAssets}
+                >
+                  <Package size={18} />
+                  <span className="sidebar-label">IT Asset</span>
+
+                  {activeSection === "assets" && (
+                    <span className="sidebar-link-dot" />
+                  )}
+                </button>
+            )}
 
             <button
               type="button"
