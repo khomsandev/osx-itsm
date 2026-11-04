@@ -21,10 +21,17 @@ import {
     UserPlus,
     RotateCcw,
     History,
+    Upload,
 } from "lucide-react";
 
 import api from "../api/client";
 import AppSidebar from "../components/AppSidebar";
+
+// URL ของ Backend สำหรับเรียกดูรูปภาพ
+const API_ORIGIN = new URL(
+    api.defaults.baseURL || window.location.origin,
+    window.location.origin
+).origin;
 
 const STATUS_LABELS = {
     AVAILABLE: "พร้อมใช้งาน",
@@ -102,11 +109,39 @@ export default function AssetManagement({
     };
     const [assetForm, setAssetForm] = useState(initialAssetForm);
 
+    // Create Asset Image
+    const [createImageFile, setCreateImageFile] = useState(null);
+    const [createImagePreview, setCreateImagePreview] = useState("");
+
     // Asset Detail
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState("");
+
+    // Asset Image Upload
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState("");
+    const [imageUploading, setImageUploading] = useState(false);
+    const [imageUploadError, setImageUploadError] = useState("");
+    const [imageUploadSuccess, setImageUploadSuccess] = useState("");
+
+    // คืนหน่วยความจำ Preview เมื่อเปลี่ยนรูปหรือปิด Component
+    useEffect(() => {
+        if (!imagePreview) return;
+
+        return () => {
+            URL.revokeObjectURL(imagePreview);
+        };
+    }, [imagePreview]);
+
+    useEffect(() => {
+        if (!createImagePreview) return;
+
+        return () => {
+            URL.revokeObjectURL(createImagePreview);
+        };
+    }, [createImagePreview]);
 
     // Asset Edit
     const [showEditForm, setShowEditForm] = useState(false);
@@ -238,6 +273,10 @@ export default function AssetManagement({
 
     function handleOpenCreateForm() {
         setAssetForm(initialAssetForm);
+
+        setCreateImageFile(null);
+        setCreateImagePreview("");
+
         setCreateError("");
         setCreateSuccess("");
         setShowCreateForm(true);
@@ -257,6 +296,40 @@ export default function AssetManagement({
             ...previous,
             [name]: value,
         }));
+    }
+    
+    function handleCreateImageChange(event) {
+        const file = event.target.files?.[0];
+
+        if (!file) return;
+
+        setCreateError("");
+        setCreateSuccess("");
+
+        const allowedTypes = [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        ];
+
+        if (!allowedTypes.includes(file.type)) {
+            setCreateError(
+                "รองรับเฉพาะไฟล์ JPG, JPEG, PNG และ WEBP"
+            );
+            event.target.value = "";
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            setCreateError("ขนาดรูปภาพต้องไม่เกิน 5 MB");
+            event.target.value = "";
+            return;
+        }
+
+        setCreateImageFile(file);
+        setCreateImagePreview(URL.createObjectURL(file));
+
+        event.target.value = "";
     }
 
     async function handleCreateAsset(event) {
@@ -335,17 +408,55 @@ export default function AssetManagement({
         try {
             setSaving(true);
 
-            await api.post("/assets", payload);
+            // 1. สร้าง Asset ก่อน
+            const response = await api.post("/assets", payload);
+            const createdAsset = response.data;
 
-            setCreateSuccess("ลงทะเบียนทรัพย์สินสำเร็จ");
+            let successMessage = "ลงทะเบียนทรัพย์สินสำเร็จ";
 
+            // 2. ถ้ามีรูปภาพ ให้อัปโหลดผูกกับ Asset ที่เพิ่งสร้าง
+            if (createImageFile) {
+                if (createdAsset?.id) {
+                    try {
+                        const formData = new FormData();
+                        formData.append("file", createImageFile);
+
+                        await api.post(
+                            `/assets/${createdAsset.id}/image`,
+                            formData
+                        );
+
+                        successMessage =
+                            "ลงทะเบียนทรัพย์สินและ Upload รูปภาพสำเร็จ";
+                    } catch (uploadErr) {
+                        const uploadDetail =
+                            uploadErr.response?.data?.detail ||
+                            "ไม่สามารถ Upload รูปภาพได้";
+
+                        successMessage =
+                            `ลงทะเบียนทรัพย์สินสำเร็จ แต่ Upload รูปภาพไม่สำเร็จ: ${uploadDetail}`;
+                    }
+                } else {
+                    successMessage =
+                        "ลงทะเบียนทรัพย์สินสำเร็จ แต่ไม่พบ Asset ID สำหรับ Upload รูปภาพ";
+                }
+            }
+
+            setCreateSuccess(successMessage);
+            setCreateError("");
+
+            // 3. ปิดฟอร์มและล้างข้อมูล
             setShowCreateForm(false);
             setAssetForm(initialAssetForm);
+            setCreateImageFile(null);
+            setCreateImagePreview("");
 
+            // 4. โหลดข้อมูลใหม่
             await Promise.all([
                 loadAssets(),
                 loadSummary(),
             ]);
+
         } catch (err) {
             const detail = err.response?.data?.detail;
 
@@ -367,6 +478,10 @@ export default function AssetManagement({
         setShowEditForm(false);
         setSelectedAsset(null);
         setDetailError("");
+        setImageFile(null);
+        setImagePreview("");
+        setImageUploadError("");
+        setImageUploadSuccess("");
         setDetailLoading(true);
 
         setAssignments([]);
@@ -391,6 +506,89 @@ export default function AssetManagement({
             );
         } finally {
             setDetailLoading(false);
+        }
+    }
+
+    // เลือกรูปภาพ Asset
+    function handleSelectAssetImage(event) {
+        const file = event.target.files?.[0];
+
+        if (!file) return;
+
+        setImageUploadError("");
+        setImageUploadSuccess("");
+
+        const allowedTypes = [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        ];
+
+        if (!allowedTypes.includes(file.type)) {
+            setImageUploadError(
+                "รองรับเฉพาะไฟล์ JPG, JPEG, PNG และ WEBP"
+            );
+            event.target.value = "";
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            setImageUploadError("ขนาดรูปภาพต้องไม่เกิน 5 MB");
+            event.target.value = "";
+            return;
+        }
+
+        setImageFile(file);
+        setImagePreview(URL.createObjectURL(file));
+
+        // อนุญาตให้เลือกไฟล์เดิมซ้ำได้
+        event.target.value = "";
+    }
+
+
+    // Upload รูปภาพ Asset
+    async function handleUploadAssetImage() {
+        if (!selectedAsset || !imageFile) {
+            setImageUploadError("กรุณาเลือกรูปภาพก่อน");
+            return;
+        }
+
+        try {
+            setImageUploading(true);
+            setImageUploadError("");
+            setImageUploadSuccess("");
+
+            const formData = new FormData();
+            formData.append("file", imageFile);
+
+            // เรียก API Upload รูปภาพ
+            await api.post(
+                `/assets/${selectedAsset.id}/image`,
+                formData
+            );
+
+            // โหลดรายละเอียด Asset ใหม่ เพื่อรับ image_path ล่าสุด
+            const response = await api.get(
+                `/assets/${selectedAsset.id}`
+            );
+
+            setSelectedAsset(response.data);
+
+            setImageFile(null);
+            setImagePreview("");
+
+            setImageUploadSuccess("อัปโหลดรูปภาพสำเร็จ");
+
+            // Refresh รายการ Asset
+            await loadAssets();
+
+        } catch (err) {
+            setImageUploadError(
+                err.response?.data?.detail ||
+                "ไม่สามารถอัปโหลดรูปภาพได้"
+            );
+        } finally {
+            setImageUploading(false);
         }
     }
 
@@ -515,11 +713,16 @@ export default function AssetManagement({
 
     // ปิดหน้ารายละเอียด
     function handleCloseDetail() {
-        if (editSaving) return;
+        if (editSaving || imageUploading) return;
 
         setShowDetail(false);
         setSelectedAsset(null);
         setDetailError("");
+
+        setImageFile(null);
+        setImagePreview("");
+        setImageUploadError("");
+        setImageUploadSuccess("");
     }
 
     // เปิดฟอร์มแก้ไข
@@ -1471,6 +1674,77 @@ export default function AssetManagement({
                                             />
                                         </label>
 
+                                        {/* Asset Image Upload */}
+                                        <div className="full-field" style={{
+                                            border: "1px solid #e2e8f0",
+                                            borderRadius: "12px",
+                                            padding: "16px",
+                                            background: "#f8fafc",
+                                        }}>
+                                            <label className="styled-field">
+                                                <span>รูปภาพอุปกรณ์</span>
+
+                                                <input
+                                                    type="file"
+                                                    accept="image/jpeg,image/png,image/webp"
+                                                    onChange={handleCreateImageChange}
+                                                    disabled={saving}
+                                                />
+                                            </label>
+
+                                            {createImagePreview && (
+                                                <div style={{
+                                                    marginTop: "14px",
+                                                    padding: "12px",
+                                                    background: "#ffffff",
+                                                    border: "1px dashed #cbd5e1",
+                                                    borderRadius: "10px",
+                                                    textAlign: "center",
+                                                }}>
+                                                    <img
+                                                        src={createImagePreview}
+                                                        alt="Asset Preview"
+                                                        style={{
+                                                            maxWidth: "100%",
+                                                            maxHeight: "250px",
+                                                            objectFit: "contain",
+                                                            borderRadius: "8px",
+                                                        }}
+                                                    />
+
+                                                    <p style={{
+                                                        marginTop: "10px",
+                                                        fontSize: "13px",
+                                                        color: "#475569",
+                                                    }}>
+                                                        {createImageFile?.name}
+                                                    </p>
+
+                                                    <button
+                                                        type="button"
+                                                        className="secondary-button"
+                                                        onClick={() => {
+                                                            setCreateImageFile(null);
+                                                            setCreateImagePreview("");
+                                                        }}
+                                                        disabled={saving}
+                                                    >
+                                                        <X size={15} />
+                                                        ลบรูปภาพ
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            <small style={{
+                                                display: "block",
+                                                marginTop: "10px",
+                                                color: "#64748b",
+                                            }}>
+                                                รองรับ JPG, JPEG, PNG และ WEBP ขนาดไม่เกิน 5 MB
+                                                (1 รูปต่อ 1 Asset)
+                                            </small>
+                                        </div>
+
                                         <div className="form-actions full-field">
                                             <button
                                                 type="submit"
@@ -1540,6 +1814,118 @@ export default function AssetManagement({
 
                                     {selectedAsset && !detailLoading && (
                                         <>
+                                            {/* Asset Image */}
+                                            <div
+                                                className="full-field"
+                                                style={{
+                                                    marginBottom: "24px",
+                                                    padding: "18px",
+                                                    border: "1px solid #e2e8f0",
+                                                    borderRadius: "12px",
+                                                    background: "#f8fafc",
+                                                }}
+                                            >
+                                                <h3 style={{ marginBottom: "14px" }}>
+                                                    รูปภาพอุปกรณ์
+                                                </h3>
+
+                                                <div
+                                                    style={{
+                                                        width: "100%",
+                                                        minHeight: "220px",
+                                                        display: "flex",
+                                                        justifyContent: "center",
+                                                        alignItems: "center",
+                                                        background: "#ffffff",
+                                                        border: "1px dashed #cbd5e1",
+                                                        borderRadius: "10px",
+                                                        overflow: "hidden",
+                                                        marginBottom: "16px",
+                                                    }}
+                                                >
+                                                    {(imagePreview || selectedAsset.image_path) ? (
+                                                        <img
+                                                            src={
+                                                                imagePreview ||
+                                                                `${API_ORIGIN}/${selectedAsset.image_path.replace(/^\/+/, "")}`
+                                                            }
+                                                            alt={selectedAsset.asset_name}
+                                                            style={{
+                                                                maxWidth: "100%",
+                                                                maxHeight: "350px",
+                                                                objectFit: "contain",
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div
+                                                            style={{
+                                                                textAlign: "center",
+                                                                color: "#94a3b8",
+                                                                padding: "30px",
+                                                            }}
+                                                        >
+                                                            <Package size={48} />
+                                                            <p>ยังไม่มีรูปภาพอุปกรณ์</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <label className="styled-field">
+                                                    <span>เลือกรูปภาพ (JPG, PNG, WEBP)</span>
+
+                                                    <input
+                                                        type="file"
+                                                        accept="image/jpeg,image/png,image/webp"
+                                                        onChange={handleSelectAssetImage}
+                                                        disabled={imageUploading}
+                                                    />
+                                                </label>
+
+                                                {imageFile && (
+                                                    <p style={{
+                                                        fontSize: "13px",
+                                                        color: "#64748b",
+                                                        marginTop: "8px",
+                                                    }}>
+                                                        ไฟล์ที่เลือก: {imageFile.name}
+                                                    </p>
+                                                )}
+
+                                                {imageUploadError && (
+                                                    <div className="error-banner" style={{ marginTop: "12px" }}>
+                                                        <AlertCircle size={17} />
+                                                        {imageUploadError}
+                                                    </div>
+                                                )}
+
+                                                {imageUploadSuccess && (
+                                                    <div className="success-banner" style={{ marginTop: "12px" }}>
+                                                        <Package size={17} />
+                                                        {imageUploadSuccess}
+                                                    </div>
+                                                )}
+
+                                                <div className="form-actions" style={{ marginTop: "14px" }}>
+                                                    <button
+                                                        type="button"
+                                                        className="primary-button"
+                                                        onClick={handleUploadAssetImage}
+                                                        disabled={!imageFile || imageUploading}
+                                                    >
+                                                        <Upload size={16} />
+                                                        {imageUploading
+                                                            ? "กำลัง Upload..."
+                                                            : selectedAsset.image_path
+                                                                ? "เปลี่ยนรูปภาพ"
+                                                                : "Upload รูปภาพ"}
+                                                    </button>
+                                                </div>
+
+                                                <small style={{ color: "#64748b" }}>
+                                                    รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 5 MB
+                                                    และจัดเก็บได้ 1 รูปต่อ Asset
+                                                </small>
+                                            </div>
                                             <div className="form-grid">
 
                                                 <label className="styled-field">

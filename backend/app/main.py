@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.tickets import router as tickets_router
@@ -10,6 +12,19 @@ from app.api.v1.admin_settings import router as admin_settings_router
 from app.api.v1.assets import router as assets_router
 
 app = FastAPI(title=settings.APP_NAME)
+
+# Static files for IT Asset images
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+UPLOAD_DIR = BASE_DIR / "uploads"
+
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=str(UPLOAD_DIR)),
+    name="uploads"
+)
 
 origins = [
     origin.strip()

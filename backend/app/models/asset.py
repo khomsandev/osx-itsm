@@ -1,4 +1,3 @@
-
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -48,6 +47,7 @@ class Asset(Base):
     serial_number: Mapped[str | None] = mapped_column(String(150), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     quantity_on_hand: Mapped[int] = mapped_column(Integer, default=0)
     minimum_quantity: Mapped[int] = mapped_column(Integer, default=0)

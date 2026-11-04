@@ -1,6 +1,8 @@
+from pathlib import Path
+from uuid import uuid4
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, UploadFile, File
 from sqlalchemy import select, func, text
 from sqlalchemy.exc import IntegrityError
 
@@ -1018,3 +1020,123 @@ def get_asset_dashboard_summary(db: DbSession):
         low_stock_items=low_stock_items,
         total_stock_quantity=total_stock_quantity,
     )
+
+
+@router.post("/{asset_id}/image")
+def upload_asset_image(
+    asset_id: int,
+    db: DbSession,
+    file: UploadFile = File(...),
+):
+    # 1. ตรวจสอบ Asset
+    asset = db.get(Asset, asset_id)
+
+    if asset is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Asset not found"
+        )
+
+    # 2. ตรวจสอบนามสกุลไฟล์
+    allowed_extensions = {
+        ".jpg", ".jpeg", ".png", ".webp"
+    }
+
+    extension = Path(file.filename or "").suffix.lower()
+
+    if extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail="Only JPG, JPEG, PNG and WEBP files are allowed"
+        )
+
+    # 3. อ่านไฟล์และตรวจสอบขนาด
+    content = file.file.read()
+
+    max_size = 5 * 1024 * 1024
+
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail="Image file is empty"
+        )
+
+    if len(content) > max_size:
+        raise HTTPException(
+            status_code=400,
+            detail="Image size must not exceed 5 MB"
+        )
+
+    # 4. ตรวจสอบชนิดข้อมูลจริงของรูปภาพ
+    is_valid_image = False
+
+    if extension in (".jpg", ".jpeg"):
+        is_valid_image = content.startswith(b"\xff\xd8\xff")
+
+    elif extension == ".png":
+        is_valid_image = content.startswith(
+            b"\x89PNG\r\n\x1a\n"
+        )
+
+    elif extension == ".webp":
+        is_valid_image = (
+            content.startswith(b"RIFF")
+            and content[8:12] == b"WEBP"
+        )
+
+    if not is_valid_image:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid image file"
+        )
+
+    # 5. สร้างโฟลเดอร์เก็บรูป
+    backend_dir = Path(__file__).resolve().parents[3]
+
+    upload_dir = backend_dir / "uploads" / "assets"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    # 6. สร้างชื่อไฟล์ใหม่
+    filename = f"{uuid4().hex}{extension}"
+    file_path = upload_dir / filename
+
+    # 7. บันทึกไฟล์และ Database
+    try:
+        with open(file_path, "wb") as image_file:
+            image_file.write(content)
+
+        old_image_path = asset.image_path
+
+        asset.image_path = f"uploads/assets/{filename}"
+
+        db.commit()
+        db.refresh(asset)
+
+    except Exception:
+        db.rollback()
+
+        if file_path.exists():
+            file_path.unlink()
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to upload asset image"
+        )
+
+    # 8. ลบรูปเดิมหลังจากบันทึกรูปใหม่สำเร็จ
+    if old_image_path:
+        old_file = (backend_dir / old_image_path).resolve()
+
+        try:
+            if old_file.is_relative_to(upload_dir.resolve()):
+                if old_file.is_file():
+                    old_file.unlink()
+        except OSError:
+            pass
+
+    return {
+        "message": "Asset image uploaded successfully",
+        "asset_id": asset.id,
+        "asset_code": asset.asset_code,
+        "image_path": asset.image_path
+    }
