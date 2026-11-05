@@ -71,6 +71,10 @@ class AssetResponse(BaseModel):
 class StockTransactionCreate(BaseModel):
     transaction_type: Literal["RECEIVE", "ISSUE"]
     quantity: int = Field(gt=0)
+
+    # ผู้รับสินค้า กรณี ISSUE
+    issued_to: int | None = None
+
     reference_no: str | None = None
     note: str | None = None
 
@@ -162,3 +166,18 @@ class AssetAssignableUserResponse(BaseModel):
     full_name: str
     department: str | None = None
     job_position: str | None = None
+
+class StockTransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    asset_id: int
+    transaction_type: str
+    quantity: int
+    quantity_before: int | None = None
+    quantity_after: int | None = None
+    issued_to: int | None = None
+    reference_no: str | None = None
+    performed_by: int
+    transaction_date: datetime
+    note: str | None = None

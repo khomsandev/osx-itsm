@@ -181,10 +181,10 @@ export default function TicketCreate({ onCreated }) {
         <label className="styled-field">
           <span>ระดับความสำคัญ</span>
           <select value={priority} onChange={(event) => setPriority(event.target.value)}>
-            <option value="LOW">LOW — ต่ำ</option>
-            <option value="MEDIUM">MEDIUM — ปกติ</option>
-            <option value="HIGH">HIGH — สูง</option>
-            <option value="CRITICAL">CRITICAL — เร่งด่วน</option>
+            <option value="LOW">LOW — ต่ำ (7 วัน)</option>
+            <option value="MEDIUM">MEDIUM — ปกติ (3 วัน)</option>
+            <option value="HIGH">HIGH — สูง  (1 วัน)</option>
+            <option value="CRITICAL">CRITICAL — เร่งด่วน (3 ชั่วโมง)</option>
           </select>
         </label>
 
@@ -207,7 +207,7 @@ export default function TicketCreate({ onCreated }) {
             >
               <Upload size={16} /> เลือกไฟล์
             </button>
-            <span className="muted-empty"> สูงสุด {MAX_FILES} ไฟล์, ไฟล์ละไม่เกิน 10 MB | รองรับ JPG, PNG, PDF, DOC, DOCX, XLSX และ TXT</span>
+            <span className="muted-empty"> สูงสุด {MAX_FILES} ไฟล์, ไฟล์ละไม่เกิน 10 MB รองรับ JPG, PNG, PDF, DOC, DOCX, XLSX และ TXT</span>
           </div>
           {files.length > 0 && (
             <ul className="selected-attachment-list">

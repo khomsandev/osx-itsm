@@ -27,6 +27,7 @@ from app.schemas.asset import (
     AssetDisposalCreate,
     AssetDashboardSummary,
     AssetAssignableUserResponse,
+    StockTransactionResponse,
 )
 
 router = APIRouter(
@@ -388,6 +389,38 @@ def update_asset(
     db.refresh(asset)
     return asset
 
+@router.get(
+    "/{asset_id}/stock-transactions",
+    response_model=list[StockTransactionResponse]
+)
+def get_stock_transactions(
+    asset_id: int,
+    db: DbSession,
+):
+    asset = db.get(Asset, asset_id)
+
+    if asset is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Asset not found"
+        )
+
+    if asset.tracking_type != "QUANTITY":
+        raise HTTPException(
+            status_code=400,
+            detail="Stock history is only available for quantity-based assets"
+        )
+
+    transactions = db.scalars(
+        select(AssetStockTransaction)
+        .where(AssetStockTransaction.asset_id == asset_id)
+        .order_by(
+            AssetStockTransaction.transaction_date.desc(),
+            AssetStockTransaction.id.desc()
+        )
+    ).all()
+
+    return transactions
 
 @router.post("/{asset_id}/stock-transactions")
 def create_stock_transaction(
@@ -396,7 +429,7 @@ def create_stock_transaction(
     db: DbSession,
     user: CurrentUser,
 ):
-    # Lock the asset row to prevent concurrent stock updates.
+    # Lock Asset row ป้องกันการเบิก Stock พร้อมกัน
     asset = db.scalar(
         select(Asset)
         .where(Asset.id == asset_id)
@@ -404,46 +437,106 @@ def create_stock_transaction(
     )
 
     if asset is None:
-        raise HTTPException(404, "Asset not found")
-
-    if asset.tracking_type != "QUANTITY":
         raise HTTPException(
-            400, "Stock transactions are only for quantity-based assets"
+            status_code=404,
+            detail="Asset not found"
         )
 
-    if asset.status in ("DISPOSED", "INACTIVE"):
-        raise HTTPException(400, "This stock item is inactive")
+    # รองรับเฉพาะ QUANTITY
+    if asset.tracking_type != "QUANTITY":
+        raise HTTPException(
+            status_code=400,
+            detail="Stock transactions are only for quantity-based assets"
+        )
 
-    if payload.transaction_type == "RECEIVE":
-        asset.quantity_on_hand += payload.quantity
-    elif payload.transaction_type == "ISSUE":
-        if asset.quantity_on_hand < payload.quantity:
+    # ตรวจสอบสถานะ Asset
+    if asset.status in ("DISPOSED", "INACTIVE"):
+        raise HTTPException(
+            status_code=400,
+            detail="This stock item is inactive"
+        )
+
+    # จำนวนก่อนทำรายการ
+    quantity_before = asset.quantity_on_hand
+
+    # ตรวจสอบผู้รับสินค้า
+    if payload.transaction_type == "ISSUE":
+        if payload.issued_to is not None:
+            recipient = db.get(User, payload.issued_to)
+
+            if recipient is None or not recipient.is_active:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Recipient user not found or inactive"
+                )
+
+        # ตรวจสอบ Stock ก่อนเบิก
+        if quantity_before < payload.quantity:
             raise HTTPException(
-                400,
-                f"Insufficient stock. Available: {asset.quantity_on_hand}",
+                status_code=400,
+                detail=f"Insufficient stock. Available: {quantity_before}"
             )
+
+        # ตัด Stock อัตโนมัติ
         asset.quantity_on_hand -= payload.quantity
 
+    elif payload.transaction_type == "RECEIVE":
+
+        # รายการรับเข้าไม่ควรระบุผู้รับ
+        if payload.issued_to is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="issued_to must be empty for RECEIVE transaction"
+            )
+
+        # เพิ่ม Stock อัตโนมัติ
+        asset.quantity_on_hand += payload.quantity
+
+    # จำนวนหลังทำรายการ
+    quantity_after = asset.quantity_on_hand
+
+    # บันทึกประวัติ Stock Transaction
     transaction = AssetStockTransaction(
         asset_id=asset.id,
         transaction_type=payload.transaction_type,
         quantity=payload.quantity,
+        quantity_before=quantity_before,
+        quantity_after=quantity_after,
+        issued_to=(
+            payload.issued_to
+            if payload.transaction_type == "ISSUE"
+            else None
+        ),
         reference_no=payload.reference_no,
         performed_by=user.id,
         note=payload.note,
     )
 
     db.add(transaction)
+
     asset.updated_by = user.id
 
     db.commit()
+    db.refresh(transaction)
+    db.refresh(asset)
 
     return {
         "message": "Stock transaction completed",
+        "transaction_id": transaction.id,
+        "asset_id": asset.id,
         "asset_code": asset.asset_code,
-        "transaction_type": payload.transaction_type,
-        "quantity": payload.quantity,
+        "asset_name": asset.asset_name,
+        "transaction_type": transaction.transaction_type,
+        "quantity": transaction.quantity,
+        "quantity_before": transaction.quantity_before,
+        "quantity_after": transaction.quantity_after,
+        "issued_to": transaction.issued_to,
+        "performed_by": transaction.performed_by,
         "quantity_on_hand": asset.quantity_on_hand,
+        "minimum_quantity": asset.minimum_quantity,
+        "is_low_stock": (
+            asset.quantity_on_hand <= asset.minimum_quantity
+        ),
     }
 
 @router.post(

@@ -178,6 +178,18 @@ export default function AssetManagement({
     const [assignmentError, setAssignmentError] = useState("");
     const [assignmentSuccess, setAssignmentSuccess] = useState("");
 
+    // Quantity Stock Transaction
+    const [stockTransactions, setStockTransactions] = useState([]);
+    const [stockLoading, setStockLoading] = useState(false);
+    const [stockSaving, setStockSaving] = useState(false);
+    const [stockError, setStockError] = useState("");
+    const [stockSuccess, setStockSuccess] = useState("");
+    const [stockType, setStockType] = useState("ISSUE");
+    const [stockQuantity, setStockQuantity] = useState("1");
+    const [stockRecipient, setStockRecipient] = useState("");
+    const [stockReference, setStockReference] = useState("");
+    const [stockNote, setStockNote] = useState("");
+
     const loadAssets = useCallback(async () => {
         try {
             setError("");
@@ -498,6 +510,16 @@ export default function AssetManagement({
 
             if (response.data.tracking_type === "INDIVIDUAL") {
                 await loadAssignmentData(assetId);
+            } else if (response.data.tracking_type === "QUANTITY") {
+                setStockTransactions([]);
+                setStockError("");
+                setStockSuccess("");
+                setStockType("ISSUE");
+                setStockQuantity("1");
+                setStockRecipient("");
+                setStockReference("");
+                setStockNote("");
+                await loadStockData(assetId);
             }
         } catch (err) {
             setDetailError(
@@ -621,6 +643,93 @@ export default function AssetManagement({
             );
         } finally {
             setAssignmentLoading(false);
+        }
+    }
+
+    async function loadStockData(assetId) {
+        try {
+            setStockLoading(true);
+            setStockError("");
+
+            const [usersResponse, historyResponse] = await Promise.all([
+                api.get("/assets/assignable-users"),
+                api.get(`/assets/${assetId}/stock-transactions`),
+            ]);
+
+            setAssignableUsers(
+                Array.isArray(usersResponse.data) ? usersResponse.data : []
+            );
+            setStockTransactions(
+                Array.isArray(historyResponse.data) ? historyResponse.data : []
+            );
+        } catch (err) {
+            setStockError(
+                err.response?.data?.detail ||
+                "ไม่สามารถโหลดประวัติ Stock Transaction ได้"
+            );
+        } finally {
+            setStockLoading(false);
+        }
+    }
+
+    async function handleStockTransaction(event) {
+        event.preventDefault();
+        if (!selectedAsset) return;
+
+        const quantity = Number(stockQuantity);
+        if (!Number.isInteger(quantity) || quantity <= 0) {
+            setStockError("กรุณาระบุจำนวนเป็นจำนวนเต็มมากกว่า 0");
+            return;
+        }
+        if (stockType === "ISSUE" && !stockRecipient) {
+            setStockError("กรุณาเลือกผู้รับอุปกรณ์");
+            return;
+        }
+
+        try {
+            setStockSaving(true);
+            setStockError("");
+            setStockSuccess("");
+
+            const payload = {
+                transaction_type: stockType,
+                quantity,
+                issued_to: stockType === "ISSUE" ? Number(stockRecipient) : null,
+                reference_no: stockReference.trim() || null,
+                note: stockNote.trim() || null,
+            };
+
+            const response = await api.post(
+                `/assets/${selectedAsset.id}/stock-transactions`,
+                payload
+            );
+
+            setStockSuccess(
+                `${stockType === "RECEIVE" ? "รับสินค้าเข้า" : "เบิกสินค้า"}สำเร็จ Stock คงเหลือ ${response.data.quantity_on_hand} ชิ้น`
+            );
+            setStockQuantity("1");
+            setStockRecipient("");
+            setStockReference("");
+            setStockNote("");
+
+            const [assetResponse] = await Promise.all([
+                api.get(`/assets/${selectedAsset.id}`),
+                loadStockData(selectedAsset.id),
+                loadAssets(),
+                loadSummary(),
+            ]);
+            setSelectedAsset(assetResponse.data);
+        } catch (err) {
+            const detail = err.response?.data?.detail;
+            setStockError(
+                typeof detail === "string"
+                    ? detail
+                    : Array.isArray(detail)
+                        ? detail.map((item) => item.msg).join(", ")
+                        : "ไม่สามารถบันทึกรายการ Stock ได้"
+            );
+        } finally {
+            setStockSaving(false);
         }
     }
 
@@ -2457,6 +2566,156 @@ export default function AssetManagement({
                                                             </div>
                                                         </>
                                                     )}
+                                                </div>
+                                            )}
+
+                                            {/* Quantity Stock Issue / Receive / History */}
+                                            {selectedAsset.tracking_type === "QUANTITY" && (
+                                                <div className="full-field" style={{ marginTop: "24px" }}>
+                                                    <div className="section-heading">
+                                                        <div className="section-heading-icon"><Boxes size={19} /></div>
+                                                        <div>
+                                                            <h2>เบิกจ่าย / รับสินค้าเข้าคลัง</h2>
+                                                            <p>Stock Issue, Receive & Transaction History</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="surface-card" style={{ padding: "18px", marginBottom: "20px" }}>
+                                                        <div className="form-grid">
+                                                            <label className="styled-field">
+                                                                <span>Stock คงเหลือ</span>
+                                                                <input value={`${selectedAsset.quantity_on_hand ?? 0} ชิ้น`} disabled />
+                                                            </label>
+                                                            <label className="styled-field">
+                                                                <span>จำนวนขั้นต่ำ</span>
+                                                                <input value={`${selectedAsset.minimum_quantity ?? 0} ชิ้น`} disabled />
+                                                            </label>
+                                                            <label className="styled-field">
+                                                                <span>สถานะ Stock</span>
+                                                                <input
+                                                                    value={
+                                                                        Number(selectedAsset.quantity_on_hand ?? 0) <= Number(selectedAsset.minimum_quantity ?? 0)
+                                                                            ? "Low Stock"
+                                                                            : "ปกติ"
+                                                                    }
+                                                                    disabled
+                                                                />
+                                                            </label>
+                                                        </div>
+                                                    </div>
+
+                                                    {stockError && (
+                                                        <div className="error-banner" style={{ marginBottom: "14px" }}>
+                                                            <AlertCircle size={17} /> {stockError}
+                                                        </div>
+                                                    )}
+                                                    {stockSuccess && (
+                                                        <div className="success-banner" style={{ marginBottom: "14px" }}>
+                                                            <Package size={17} /> {stockSuccess}
+                                                        </div>
+                                                    )}
+
+                                                    <form onSubmit={handleStockTransaction} className="surface-card" style={{ padding: "18px", marginBottom: "20px" }}>
+                                                        <h3 style={{ marginBottom: "16px" }}>ทำรายการ Stock</h3>
+                                                        <div className="form-grid">
+                                                            <label className="styled-field">
+                                                                <span>ประเภทรายการ *</span>
+                                                                <select
+                                                                    value={stockType}
+                                                                    onChange={(event) => {
+                                                                        setStockType(event.target.value);
+                                                                        setStockRecipient("");
+                                                                        setStockError("");
+                                                                    }}
+                                                                >
+                                                                    <option value="ISSUE">เบิกสินค้า (ISSUE)</option>
+                                                                    <option value="RECEIVE">รับสินค้าเข้า (RECEIVE)</option>
+                                                                </select>
+                                                            </label>
+                                                            <label className="styled-field">
+                                                                <span>จำนวน *</span>
+                                                                <input type="number" min="1" step="1" value={stockQuantity}
+                                                                    onChange={(event) => setStockQuantity(event.target.value)} required />
+                                                            </label>
+
+                                                            {stockType === "ISSUE" && (
+                                                                <label className="styled-field full-field">
+                                                                    <span>ผู้รับอุปกรณ์ *</span>
+                                                                    <select value={stockRecipient}
+                                                                        onChange={(event) => setStockRecipient(event.target.value)} required>
+                                                                        <option value="">-- เลือกผู้รับอุปกรณ์ --</option>
+                                                                        {assignableUsers.map((item) => (
+                                                                            <option key={item.id} value={item.id}>
+                                                                                {item.full_name || item.username} ({item.username})
+                                                                                {item.department ? ` - ${item.department}` : ""}
+                                                                            </option>
+                                                                        ))}
+                                                                    </select>
+                                                                </label>
+                                                            )}
+
+                                                            <label className="styled-field">
+                                                                <span>เลขที่เอกสารอ้างอิง</span>
+                                                                <input value={stockReference} onChange={(event) => setStockReference(event.target.value)}
+                                                                    maxLength={100} placeholder="เช่น PO-2026-001" />
+                                                            </label>
+                                                            <label className="styled-field">
+                                                                <span>หมายเหตุ</span>
+                                                                <input value={stockNote} onChange={(event) => setStockNote(event.target.value)}
+                                                                    placeholder="รายละเอียดเพิ่มเติม" />
+                                                            </label>
+                                                            <div className="form-actions full-field">
+                                                                <button type="submit" className="primary-button"
+                                                                    disabled={stockSaving || stockLoading || (stockType === "ISSUE" && assignableUsers.length === 0)}>
+                                                                    {stockSaving ? "กำลังบันทึก..." :
+                                                                        stockType === "ISSUE" ? "ยืนยันการเบิกสินค้า" : "ยืนยันรับสินค้าเข้า"}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </form>
+
+                                                    <div className="surface-card" style={{ padding: "18px" }}>
+                                                        <h3 style={{ marginBottom: "16px" }}>
+                                                            <History size={17} style={{ display: "inline", marginRight: "8px" }} />
+                                                            ประวัติ Stock Transaction
+                                                        </h3>
+                                                        {stockLoading ? (
+                                                            <div className="empty-state">กำลังโหลดประวัติ Stock...</div>
+                                                        ) : stockTransactions.length === 0 ? (
+                                                            <div className="empty-state">ยังไม่มีประวัติการรับเข้า / เบิกจ่าย</div>
+                                                        ) : (
+                                                            <div className="table-scroll">
+                                                                <table className="modern-table">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>วันที่ทำรายการ</th><th>ประเภท</th><th>จำนวน</th>
+                                                                            <th>ก่อนทำรายการ</th><th>หลังทำรายการ</th>
+                                                                            <th>ผู้รับ</th><th>เลขที่อ้างอิง</th><th>ผู้ทำรายการ</th><th>หมายเหตุ</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {stockTransactions.map((item) => (
+                                                                            <tr key={item.id}>
+                                                                                <td>{item.transaction_date ? new Date(item.transaction_date).toLocaleString("th-TH") : "-"}</td>
+                                                                                <td>
+                                                                                    <span className={`status-pill ${item.transaction_type === "RECEIVE" ? "status-resolved" : "status-assigned"}`}>
+                                                                                        <span />{item.transaction_type === "RECEIVE" ? "รับเข้า" : "เบิกออก"}
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td>{item.quantity}</td>
+                                                                                <td>{item.quantity_before ?? "-"}</td>
+                                                                                <td>{item.quantity_after ?? "-"}</td>
+                                                                                <td>{item.issued_to ? userMap[item.issued_to] || `User #${item.issued_to}` : "-"}</td>
+                                                                                <td>{item.reference_no || "-"}</td>
+                                                                                <td>{userMap[item.performed_by] || `User #${item.performed_by}`}</td>
+                                                                                <td>{item.note || "-"}</td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                         </>

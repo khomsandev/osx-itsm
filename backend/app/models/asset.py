@@ -146,7 +146,23 @@ class AssetStockTransaction(Base):
     asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"))
     transaction_type: Mapped[str] = mapped_column(String(20))
     quantity: Mapped[int] = mapped_column(Integer)
-    reference_no: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # จำนวน Stock ก่อนและหลังทำรายการ
+    quantity_before: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    quantity_after: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+
+    # ผู้รับอุปกรณ์ (ใช้กับรายการ ISSUE)
+    issued_to: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
+
+    reference_no: Mapped[str | None] = mapped_column(
+        String(100), nullable=True
+    )
     performed_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     transaction_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
