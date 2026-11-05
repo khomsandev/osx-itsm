@@ -1,27 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-    Package,
-    Search,
-    RefreshCw,
-    AlertCircle,
-    MapPin,
-    Hash,
-    Monitor,
-    Boxes,
-    Users,
-    Wrench,
-    Archive,
-    AlertTriangle,
-    Layers,
-    Plus,
-    X,
-    Save,
-    Eye,
-    Pencil,
-    UserPlus,
-    RotateCcw,
-    History,
-    Upload,
+import {Package,Search,RefreshCw,AlertCircle,MapPin,Hash,Monitor,Boxes,Users,Wrench,Archive,AlertTriangle,Layers,
+    Plus,X,Save,Eye,Pencil,UserPlus,RotateCcw,History,Upload,
 } from "lucide-react";
 
 import api from "../api/client";
@@ -189,6 +168,26 @@ export default function AssetManagement({
     const [stockRecipient, setStockRecipient] = useState("");
     const [stockReference, setStockReference] = useState("");
     const [stockNote, setStockNote] = useState("");
+
+    // ดักจับปุ่ม ESC เพื่อปิด Modal ทั้งหมดตามลำดับความสำคัญ
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === "Escape") {
+                if (showEditForm && !editSaving) {
+                    handleCloseEdit();
+                } else if (showDetail && !editSaving && !imageUploading) {
+                    handleCloseDetail();
+                } else if (showCreateForm && !saving) {
+                    handleCloseCreateForm();
+                }
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [showCreateForm, showDetail, showEditForm, saving, editSaving, imageUploading]);
 
     const loadAssets = useCallback(async () => {
         try {
@@ -1562,7 +1561,14 @@ export default function AssetManagement({
 
                     {/* Create Asset Modal */}
                     {showCreateForm && (
-                        <div className="modal-overlay">
+                        <div 
+                            className="modal-overlay" 
+                            onClick={(e) => {
+                                if (e.target === e.currentTarget) {
+                                    handleCloseCreateForm();
+                                }
+                            }}
+                        >
                             <div className="surface-card modal-content admin-form-card">
 
                                 <div className="section-heading">
@@ -1882,7 +1888,14 @@ export default function AssetManagement({
 
                     {/* Asset Detail Modal */}
                     {showDetail && (
-                        <div className="modal-overlay">
+                        <div 
+                            className="modal-overlay" 
+                            onClick={(e) => {
+                                if (e.target === e.currentTarget) {
+                                    handleCloseDetail();
+                                }
+                            }}
+                        >
                             <div className="surface-card modal-content admin-form-card">
 
                                 <div className="section-heading">
@@ -2727,7 +2740,14 @@ export default function AssetManagement({
 
                     {/* Edit Asset Modal */}
                     {showEditForm && selectedAsset && (
-                        <div className="modal-overlay">
+                        <div 
+                            className="modal-overlay" 
+                            onClick={(e) => {
+                                if (e.target === e.currentTarget) {
+                                    handleCloseEdit();
+                                }
+                            }}
+                        >
                             <div className="surface-card modal-content admin-form-card">
 
                                 <div className="section-heading">
