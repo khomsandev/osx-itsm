@@ -1,16 +1,7 @@
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  Activity,
-  AlertCircle,
-  ArrowUpRight,
-  CheckCircle2,
-  ClipboardList,
-  Clock3,
-  Plus,
-  RefreshCw,
-  ShieldCheck,
-  Package,
+import {Activity,AlertCircle,ArrowUpRight,CheckCircle2,ClipboardList,Clock3,Plus,
+  RefreshCw,ShieldCheck,FunnelX
 } from "lucide-react";
 
 import api from "../api/client";
@@ -54,11 +45,51 @@ export default function Dashboard({ user, onLogout }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const totalTickets = tickets.length;
-  const totalPages = Math.max(1, Math.ceil(totalTickets / pageSize));
+  // Ticket Date Filter
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // Convert ticket created_at to local YYYY-MM-DD
+  const getLocalDateKey = (dateValue) => {
+    if (!dateValue) return "";
+
+    const date = new Date(dateValue);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  // Filter tickets by created_at
+  const filteredTickets = tickets.filter((ticket) => {
+    const ticketDate = getLocalDateKey(ticket.created_at);
+
+    if (!ticketDate) return !dateFrom && !dateTo;
+
+    if (dateFrom && ticketDate < dateFrom) return false;
+    if (dateTo && ticketDate > dateTo) return false;
+
+    return true;
+  });
+
+  // Pagination after filtering
+  const totalTickets = filteredTickets.length;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalTickets / pageSize)
+  );
+
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const paginatedTickets = tickets.slice(startIndex, endIndex);
+
+  const paginatedTickets = filteredTickets.slice(
+    startIndex,
+    endIndex
+  );
 
   usePageTitle(
   showAssets
@@ -349,6 +380,102 @@ export default function Dashboard({ user, onLogout }) {
               </div>
             )}
 
+            {/* Ticket Date Filter */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-end",
+                flexWrap: "wrap",
+                gap: "12px",
+                padding: "16px 20px",
+                borderBottom: "1px solid #e5e7eb",
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label
+                  htmlFor="ticketDateFrom"
+                  style={{ fontSize: "13px", fontWeight: 600, color: "#475569" }}
+                >
+                  วันที่เริ่มต้น
+                </label>
+
+                <input
+                  id="ticketDateFrom"
+                  type="date"
+                  value={dateFrom}
+                  max={dateTo || undefined}
+                  onChange={(event) => {
+                    setDateFrom(event.target.value);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: "9px 12px",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "7px",
+                    background: "#fff",
+                    color: "#334155",
+                    fontSize: "13px",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label
+                  htmlFor="ticketDateTo"
+                  style={{ fontSize: "13px", fontWeight: 600, color: "#475569" }}
+                >
+                  วันที่สิ้นสุด
+                </label>
+
+                <input
+                  id="ticketDateTo"
+                  type="date"
+                  value={dateTo}
+                  min={dateFrom || undefined}
+                  onChange={(event) => {
+                    setDateTo(event.target.value);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: "9px 12px",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "7px",
+                    background: "#fff",
+                    color: "#334155",
+                    fontSize: "13px",
+                  }}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                  setCurrentPage(1);
+                }}
+                disabled={!dateFrom && !dateTo}
+              >
+                <FunnelX
+                    size={15}
+                    className={refreshing ? "spin" : ""}
+                  />
+                ล้างตัวกรอง
+              </button>
+
+              <span
+                style={{
+                  fontSize: "13px",
+                  color: "#64748b",
+                  paddingBottom: "9px",
+                }}
+              >
+                พบ {totalTickets.toLocaleString("th-TH")} รายการ
+              </span>
+            </div>
+
             <div className="table-scroll">
               <table className="modern-table">
                 <thead>
@@ -438,7 +565,7 @@ export default function Dashboard({ user, onLogout }) {
                     );
                   })}
 
-                  {totalTickets === 0 && !error && (
+                  {totalTickets.length === 0 && !error && (
                     <tr>
                       <td colSpan={6}>
                         <div className="empty-state">
@@ -465,15 +592,32 @@ export default function Dashboard({ user, onLogout }) {
                     </tr>
                   )}
 
-                  {totalTickets > 0 && paginatedTickets.length === 0 && (
-                    <tr>
-                      <td colSpan={6}>
-                        <div className="empty-state">
-                          ไม่พบรายการในหน้านี้
+                  {tickets.length > 0 && totalTickets === 0 && (
+                  <tr>
+                    <td colSpan={6}>
+                      <div className="empty-state">
+                        <div className="empty-icon">
+                          <ClipboardList size={27} />
                         </div>
-                      </td>
-                    </tr>
-                  )}
+
+                        <b>ไม่พบรายการแจ้งซ่อม</b>
+                        <p>ไม่พบ Ticket ในช่วงวันที่ที่เลือก</p>
+
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => {
+                            setDateFrom("");
+                            setDateTo("");
+                            setCurrentPage(1);
+                          }}
+                        >
+                          ล้างตัวกรองวันที่
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
                 </tbody>
               </table>
             </div>
