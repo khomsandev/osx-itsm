@@ -1134,3 +1134,47 @@ button:disabled { cursor: not-allowed; }
     max-height: 80vh;
   }
 }
+
+/* Change Password - Action Buttons */
+.change-password-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  margin-top: 24px;
+}
+
+.change-password-actions .login-submit {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.change-password-actions .secondary-button {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .change-password-actions {
+    gap: 8px;
+  }
+
+  .change-password-actions .login-submit {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .change-password-actions .secondary-button {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}

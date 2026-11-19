@@ -231,32 +231,37 @@ export default function ChangePassword({
                 )}
               </button>
             </div>
+            
+            <div className="login-card-heading">
+              <p>
+                รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 8 ตัวอักษร
+              </p>
+            </div>
 
-            <p className="muted-text">
-              รหัสผ่านใหม่ต้องมีความยาว 8–128 ตัวอักษร
-            </p>
+            <div className="change-password-actions">
+              <button
+                disabled={loading}
+                className="login-submit"
+                type="submit"
+              >
+                <span>
+                  {loading
+                    ? "กำลังเปลี่ยนรหัสผ่าน..."
+                    : "ยืนยันเปลี่ยนรหัสผ่าน"}
+                </span>
+                <ArrowRight size={18} />
+              </button>
 
-            <button
-              disabled={loading}
-              className="login-submit"
-              type="submit"
-            >
-              <span>
-                {loading
-                  ? "กำลังเปลี่ยนรหัสผ่าน..."
-                  : "ยืนยันเปลี่ยนรหัสผ่าน"}
-              </span>
-              <ArrowRight size={18} />
-            </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={onLogout}
+                disabled={loading}
+              >
+                กลับหน้าเข้าสู่ระบบ
+              </button>
+            </div>
 
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={onLogout}
-              disabled={loading}
-            >
-              ออกจากระบบ
-            </button>
           </form>
         </section>
       </div>
