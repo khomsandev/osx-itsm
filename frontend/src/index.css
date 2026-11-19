@@ -1003,3 +1003,134 @@ button:disabled { cursor: not-allowed; }
     grid-row: auto;
   }
 }
+
+/* Ticket attachment image preview */
+.attachment-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.attachment-thumbnail-button {
+  position: relative;
+  display: block;
+  width: 120px;
+  height: 100px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.attachment-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.attachment-thumbnail-button:hover .attachment-thumbnail {
+  transform: scale(1.05);
+}
+
+.attachment-preview-hint {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 5px;
+  color: white;
+  background: rgba(15, 23, 42, 0.72);
+  font-size: 11px;
+  text-align: center;
+}
+
+.attachment-preview-unavailable {
+  width: 120px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+  text-align: center;
+}
+
+.attachment-item-compact {
+  margin-top: 8px;
+}
+
+/* Image lightbox */
+.attachment-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.92);
+  cursor: zoom-out;
+}
+
+.attachment-lightbox img {
+  max-width: 95vw;
+  max-height: 85vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: default;
+}
+
+.attachment-lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: white;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.attachment-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.attachment-lightbox-name {
+  max-width: 90vw;
+  color: white;
+  font-size: 14px;
+  text-align: center;
+  word-break: break-word;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .attachment-item {
+    align-items: flex-start;
+  }
+
+  .attachment-thumbnail-button {
+    width: 100px;
+    height: 90px;
+  }
+
+  .attachment-lightbox {
+    padding: 12px;
+  }
+
+  .attachment-lightbox img {
+    max-width: 100%;
+    max-height: 80vh;
+  }
+}

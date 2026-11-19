@@ -1,5 +1,5 @@
 
-import { ArrowLeft, ClipboardList, Plus } from "lucide-react";
+import { ArrowLeft, ClipboardList } from "lucide-react";
 import AppSidebar from "../components/AppSidebar";
 import TicketCreate from "./TicketCreate";
 import usePageTitle from "../hooks/usePageTitle";

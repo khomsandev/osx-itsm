@@ -1,14 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  AlertCircle,
-  FileText,
-  Paperclip,
-  Send,
-  Ticket,
-  Trash2,
-  Upload,
-  Wrench,
-} from "lucide-react";
+import {AlertCircle, FileText, Paperclip, Send, Ticket, Trash2, Upload, Wrench } from "lucide-react";
 import api from "../api/client";
 
 const MAX_FILES = 5;

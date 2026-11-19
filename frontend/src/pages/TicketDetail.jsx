@@ -1,19 +1,6 @@
 import { useCallback, useEffect,useRef, useState } from "react";
-import {
-  AlertCircle,
-  ArrowLeft,
-  CheckCircle2,
-  Clock3,
-  History,
-  MessageSquare,
-  Paperclip,
-  Download,
-  RefreshCw,
-  Send,
-  ShieldCheck,
-  UserRound,
-  Wrench,
-  X,
+import {AlertCircle, ArrowLeft, CheckCircle2, Clock3, History, MessageSquare, Paperclip,
+  Download, RefreshCw, Send, ShieldCheck, UserRound, Wrench, X,
 } from "lucide-react";
 
 import api from "../api/client";
@@ -83,6 +70,7 @@ export default function TicketDetail({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [statusFiles, setStatusFiles] = useState([]);
+  const [imagePreview, setImagePreview] = useState(null);
   const statusFileInputRef = useRef(null);
 
   usePageTitle(
@@ -456,25 +444,13 @@ export default function TicketDetail({
                 {attachments.length > 0 ? (
                   <div className="attachment-list">
                     {attachments.map((attachment) => (
-                      <div key={attachment.id} className="attachment-item">
-                        <div className="attachment-file-info">
-                          <Paperclip size={16} className="attachment-icon" />
-                          <span className="attachment-name">
-                            {attachment.original_name}
-                          </span>
-                          <span className="attachment-size">
-                            ({(Number(attachment.file_size || 0) / 1024).toFixed(1)} KB)
-                          </span>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={() => downloadAttachment(attachment)}
-                        >
-                          <Download size={15} /> ดาวน์โหลด
-                        </button>
-                      </div>
+                      <AttachmentPreview
+                        key={attachment.id}
+                        attachment={attachment}
+                        ticketId={ticketId}
+                        onPreview={setImagePreview}
+                        onDownload={downloadAttachment}
+                      />
                     ))}
                   </div>
                 ) : (
@@ -714,31 +690,18 @@ export default function TicketDetail({
                         {new Date(item.created_at).toLocaleString("th-TH")}
                       </time>
                       {item.attachments?.length > 0 && (
-                        // ไฟล์แนบในประวัติการดำเนินงาน
-                        <div className="attachment-list">
-                          {item.attachments.map((attachment) => (
-                            <div
-                              key={attachment.id}
-                              className="attachment-item"
-                            >
-                              <div className="attachment-file-info">
-                                <Paperclip size={16} />
-
-                                <span className="attachment-name">
-                                  {attachment.original_name}
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                className="secondary-button"
-                                onClick={() => downloadAttachment(attachment)}
-                              >
-                                <Download size={15} />
-                                ดาวน์โหลด
-                              </button>
-                            </div>
-                          ))}
-                        </div>
+                      <div className="attachment-list">
+                        {item.attachments.map((attachment) => (
+                          <AttachmentPreview
+                            key={attachment.id}
+                            attachment={attachment}
+                            ticketId={ticketId}
+                            onPreview={setImagePreview}
+                            onDownload={downloadAttachment}
+                            compact
+                          />
+                        ))}
+                      </div>
                     )}
                     </article>
                   ))}
@@ -771,10 +734,109 @@ export default function TicketDetail({
           </div>
         </div>
       </main>
+
+      {imagePreview && (
+        <div
+          className="attachment-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={imagePreview.name || "Image preview"}
+          onClick={() => setImagePreview(null)}
+        >
+          <button
+            type="button"
+            className="attachment-lightbox-close"
+            aria-label="Close image preview"
+            onClick={() => setImagePreview(null)}
+          >
+            <X size={24} />
+          </button>
+          <img
+            src={imagePreview.url}
+            alt={imagePreview.name || "Ticket attachment"}
+            onClick={(event) => event.stopPropagation()}
+          />
+          <div className="attachment-lightbox-name">
+            {imagePreview.name}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function ActivityIcon() {
   return <History size={18} />;
+}
+
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
+
+function isImageAttachment(fileName = "") {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  return IMAGE_EXTENSIONS.includes(extension);
+}
+
+function AttachmentPreview({ attachment, ticketId, onPreview, onDownload, compact = false }) {
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewError, setPreviewError] = useState(false);
+
+  useEffect(() => {
+    if (!isImageAttachment(attachment.original_name)) return undefined;
+
+    let objectUrl;
+    let cancelled = false;
+
+    api.get(
+      `/tickets/${ticketId}/attachments/${attachment.id}/download`,
+      { responseType: "blob" }
+    ).then((response) => {
+      if (cancelled) return;
+      objectUrl = window.URL.createObjectURL(response.data);
+      setPreviewUrl(objectUrl);
+    }).catch(() => {
+      if (!cancelled) setPreviewError(true);
+    });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) window.URL.revokeObjectURL(objectUrl);
+    };
+  }, [attachment.id, attachment.original_name, ticketId]);
+
+  const imageFile = isImageAttachment(attachment.original_name);
+
+  return (
+    <div className={`attachment-item ${compact ? "attachment-item-compact" : ""}`}>
+      {imageFile && previewUrl && (
+        <button
+          type="button"
+          className="attachment-thumbnail-button"
+          onClick={() => onPreview({ url: previewUrl, name: attachment.original_name })}
+          aria-label={`Preview ${attachment.original_name}`}
+        >
+          <img className="attachment-thumbnail" src={previewUrl} alt={attachment.original_name} />
+          <span className="attachment-preview-hint">คลิกเพื่อดูภาพ</span>
+        </button>
+      )}
+      {imageFile && previewError && (
+        <div className="attachment-preview-unavailable">ไม่สามารถแสดง Preview ได้</div>
+      )}
+      <div className="attachment-file-info">
+        <Paperclip size={16} className="attachment-icon" />
+        <span className="attachment-name">{attachment.original_name}</span>
+        {!compact && (
+          <span className="attachment-size">
+            ({(Number(attachment.file_size || 0) / 1024).toFixed(1)} KB)
+          </span>
+        )}
+      </div>
+      <button
+        type="button"
+        className="secondary-button"
+        onClick={() => onDownload(attachment)}
+      >
+        <Download size={15} /> ดาวน์โหลด
+      </button>
+    </div>
+  );
 }
