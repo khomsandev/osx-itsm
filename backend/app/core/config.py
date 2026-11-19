@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
 
+    # Telegram Notification
+    TELEGRAM_ENABLED: bool = False
+    TELEGRAM_BOT_TOKEN: str = Field(default="", repr=False)
+    TELEGRAM_CHAT_ID: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

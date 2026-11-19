@@ -29,3 +29,5 @@ python-multipart
 
 # Email Validation
 email-validator
+
+httpx

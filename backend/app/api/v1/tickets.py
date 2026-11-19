@@ -2,7 +2,9 @@ import os
 import uuid
 
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, status, File, Form, UploadFile
+from zoneinfo import ZoneInfo
+from html import escape
+from fastapi import APIRouter, HTTPException, status, File, Form, UploadFile, BackgroundTasks
 from sqlalchemy import select, text
 from pathlib import Path
 from fastapi.responses import FileResponse
@@ -13,6 +15,7 @@ from app.models.category import Category
 from app.models.ticket import Ticket
 from app.models.ticket_comment import TicketComment
 from app.models.ticket_history import TicketHistory
+from app.services.notification import send_telegram_message
 from app.models.user import User
 from sqlalchemy.orm import aliased
 from app.schemas.ticket import (
@@ -63,12 +66,16 @@ def generate_ticket_number(db: DbSession) -> str:
     return f"{prefix}{count + 1:06d}"
 
 
-@router.post("", response_model=TicketResponse,
-             status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=TicketResponse,
+    status_code=status.HTTP_201_CREATED
+)
 def create_ticket(
     data: TicketCreate,
     db: DbSession,
     user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ):
     category = db.get(Category, data.category_id)
 
@@ -96,8 +103,64 @@ def create_ticket(
         note="Ticket created",
     ))
 
+    # บันทึกลง Database ก่อน
     db.commit()
     db.refresh(ticket)
+
+    # สร้างข้อความแจ้งเตือน
+        # แปลงเวลาเป็นประเทศไทย
+    created_time = (
+        ticket.created_at
+        .replace(tzinfo=ZoneInfo("UTC"))
+        .astimezone(ZoneInfo("Asia/Bangkok"))
+        .strftime("%d/%m/%Y %H:%M")
+        if ticket.created_at.tzinfo is None
+        else ticket.created_at
+        .astimezone(ZoneInfo("Asia/Bangkok"))
+        .strftime("%d/%m/%Y %H:%M")
+    )
+
+    # กำหนดสีความสำคัญ
+    priority_icons = {
+        "LOW": "🟢",
+        "MEDIUM": "🟡",
+        "HIGH": "🟠",
+        "URGENT": "🔴",
+    }
+
+    priority_icon = priority_icons.get(
+        ticket.priority.upper(), "⚪"
+    )
+
+    message = (
+        "🔔 <b>มีรายการแจ้งซ่อมใหม่!</b>\n"
+        "\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🏢 <b>OSX IT SERVICE DESK</b>\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "\n"
+        f"🎫 <b>Ticket No:</b>\n"
+        f"<code>{ticket.ticket_no}</code>\n"
+        "\n"
+        "📋 <b>รายละเอียดการแจ้งซ่อม</b>\n"
+        f"📝 <b>หัวข้อ:</b> {escape(ticket.subject)}\n"
+        f"👤 <b>ผู้แจ้ง:</b> {escape(user.full_name)}\n"
+        f"{priority_icon} <b>Priority:</b> {ticket.priority}\n"
+        "📌 <b>Status:</b> NEW\n"
+        "\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        f"🕒 <b>วันที่แจ้ง:</b> {created_time}\n"
+        "\n"
+        "⚠️ กรุณาตรวจสอบและรับงานผ่านระบบ\n"
+        "IT Service Desk"
+    )
+
+    # ส่ง Telegram หลังจากตอบกลับ API
+    background_tasks.add_task(
+        send_telegram_message,
+        message
+    )
+
     return ticket
 
 
