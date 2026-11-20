@@ -1178,3 +1178,34 @@ button:disabled { cursor: not-allowed; }
     padding-right: 12px;
   }
 }
+
+.asset-preview-heading,
+.asset-preview-cell {
+    width: 100px;
+    min-width: 100px;
+    text-align: center;
+    vertical-align: middle;
+}
+.asset-table-preview,
+.asset-table-preview-placeholder {
+    width: 52px;
+    height: 52px;
+    box-sizing: border-box;
+    border: 1px solid #e2e8f0;
+    border-radius: 9px;
+    background: #ffffff;
+}
+.asset-table-preview {
+    display: block;
+    margin: 0 auto;
+    padding: 4px;
+    object-fit: contain;
+}
+.asset-table-preview-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: #94a3b8;
+    background: #f8fafc;
+}

@@ -12,6 +12,18 @@ const API_ORIGIN = new URL(
     window.location.origin
 ).origin;
 
+// แปลง image_path ให้เป็น URL สำหรับแสดงรูปจาก Backend
+function getAssetImageUrl(imagePath) {
+    if (!imagePath) return "";
+
+    // รองรับกรณี API ส่ง URL แบบเต็มมาให้แล้ว
+    if (/^https?:\/\//i.test(imagePath)) {
+        return imagePath;
+    }
+
+    return `${API_ORIGIN}/${String(imagePath).replace(/^\/+/, "")}`;
+}
+
 const STATUS_LABELS = {
     AVAILABLE: "พร้อมใช้งาน",
     ASSIGNED: "ถูกมอบหมาย",
@@ -1375,6 +1387,7 @@ export default function AssetManagement({
                                 <thead>
                                     <tr>
                                         <th>Asset Code</th>
+                                        <th className="asset-preview-heading">รูปภาพ</th>
                                         <th>ชื่ออุปกรณ์</th>
                                         <th>หมวดหมู่</th>
                                         <th>Serial Number</th>
@@ -1388,7 +1401,7 @@ export default function AssetManagement({
                                 <tbody>
                                     {loading ? (
                                         <tr>
-                                            <td colSpan={7}>
+                                            <td colSpan={9}>
                                                 <div className="empty-state">
                                                     กำลังโหลดข้อมูล Asset...
                                                 </div>
@@ -1408,6 +1421,29 @@ export default function AssetManagement({
                                                             <span className="ticket-number">
                                                                 {asset.asset_code}
                                                             </span>
+                                                        </td>
+
+                                                        {/* Asset Image Preview */}
+                                                        <td className="asset-preview-cell">
+                                                            {asset.image_path ? (
+                                                                <img
+                                                                    src={getAssetImageUrl(asset.image_path)}
+                                                                    alt={asset.asset_name || "Asset Preview"}
+                                                                    title={asset.asset_name || asset.asset_code}
+                                                                    className="asset-table-preview"
+                                                                    loading="lazy"
+                                                                    onError={(event) => {
+                                                                        event.currentTarget.style.display = "none";
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <div
+                                                                    className="asset-table-preview-placeholder"
+                                                                    title="ไม่มีรูปภาพทรัพย์สิน"
+                                                                >
+                                                                    <Package size={21} />
+                                                                </div>
+                                                            )}
                                                         </td>
 
                                                         <td>
@@ -1472,7 +1508,7 @@ export default function AssetManagement({
 
                                             {assets.length === 0 && !error && (
                                                 <tr>
-                                                    <td colSpan={8}>
+                                                    <td colSpan={9}>
                                                         <div className="empty-state">
                                                             <div className="empty-icon">
                                                                 <Package size={27} />
@@ -1490,7 +1526,7 @@ export default function AssetManagement({
                                             {assets.length > 0 &&
                                                 paginatedAssets.length === 0 && (
                                                     <tr>
-                                                        <td colSpan={8}>
+                                                        <td colSpan={9}>
                                                             <div className="empty-state">
                                                                 ไม่พบรายการในหน้านี้
                                                             </div>
