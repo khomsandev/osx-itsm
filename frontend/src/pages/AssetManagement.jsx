@@ -24,6 +24,27 @@ function getAssetImageUrl(imagePath) {
     return `${API_ORIGIN}/${String(imagePath).replace(/^\/+/, "")}`;
 }
 
+// คำนวณวันหมดประกันจากวันที่ซื้อและจำนวนปี โดยใช้ local date ป้องกัน timezone shift
+function calculateWarrantyExpiry(purchaseDate, warrantyYears) {
+    if (!purchaseDate || !warrantyYears) return "";
+
+    const [year, month, day] = purchaseDate.slice(0, 10).split("-").map(Number);
+    const targetYear = year + Number(warrantyYears);
+    const lastDay = new Date(targetYear, month, 0).getDate();
+    const targetDay = Math.min(day, lastDay);
+
+    return `${targetYear}-${String(month).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
+}
+
+function inferWarrantyYears(purchaseDate, expiryDate) {
+    if (!purchaseDate || !expiryDate) return "";
+    const expiry = String(expiryDate).slice(0, 10);
+    for (const years of [1, 2, 3, 4, 5]) {
+        if (calculateWarrantyExpiry(purchaseDate, years) === expiry) return String(years);
+    }
+    return "";
+}
+
 const STATUS_LABELS = {
     AVAILABLE: "พร้อมใช้งาน",
     ASSIGNED: "ถูกมอบหมาย",
@@ -96,6 +117,7 @@ export default function AssetManagement({
         minimum_quantity: "0",
         purchase_date: "",
         purchase_price: "",
+        warranty_years: "",
         warranty_expiry: "",
     };
     const [assetForm, setAssetForm] = useState(initialAssetForm);
@@ -151,6 +173,7 @@ export default function AssetManagement({
         minimum_quantity: "0",
         purchase_date: "",
         purchase_price: "",
+        warranty_years: "",
         warranty_expiry: "",
     });
 
@@ -317,10 +340,16 @@ export default function AssetManagement({
     function handleAssetFormChange(event) {
         const { name, value } = event.target;
 
-        setAssetForm((previous) => ({
-            ...previous,
-            [name]: value,
-        }));
+        setAssetForm((previous) => {
+            const next = { ...previous, [name]: value };
+            if (name === "purchase_date" || name === "warranty_years") {
+                next.warranty_expiry = calculateWarrantyExpiry(
+                    name === "purchase_date" ? value : previous.purchase_date,
+                    name === "warranty_years" ? value : previous.warranty_years
+                );
+            }
+            return next;
+        });
     }
     
     function handleCreateImageChange(event) {
@@ -410,7 +439,7 @@ export default function AssetManagement({
                 assetForm.purchase_price !== ""
                     ? Number(assetForm.purchase_price)
                     : null,
-            warranty_expiry: assetForm.warranty_expiry || null,
+            warranty_expiry: calculateWarrantyExpiry(assetForm.purchase_date, assetForm.warranty_years) || null,
         };
 
         if (
@@ -869,12 +898,20 @@ export default function AssetManagement({
             minimum_quantity: String(
                 selectedAsset.minimum_quantity ?? 0
             ),
-            purchase_date: selectedAsset.purchase_date || "",
+            purchase_date: selectedAsset.purchase_date
+                ? String(selectedAsset.purchase_date).slice(0, 10)
+                : "",
             purchase_price:
                 selectedAsset.purchase_price != null
                     ? String(selectedAsset.purchase_price)
                     : "",
-            warranty_expiry: selectedAsset.warranty_expiry || "",
+            warranty_years: inferWarrantyYears(
+                selectedAsset.purchase_date,
+                selectedAsset.warranty_expiry
+            ),
+            warranty_expiry: selectedAsset.warranty_expiry
+                ? String(selectedAsset.warranty_expiry).slice(0, 10)
+                : "",
         });
 
         setShowEditForm(true);
@@ -892,10 +929,16 @@ export default function AssetManagement({
     function handleEditFormChange(event) {
         const { name, value } = event.target;
 
-        setEditForm((previous) => ({
-            ...previous,
-            [name]: value,
-        }));
+        setEditForm((previous) => {
+            const next = { ...previous, [name]: value };
+            if (name === "purchase_date" || name === "warranty_years") {
+                next.warranty_expiry = calculateWarrantyExpiry(
+                    name === "purchase_date" ? value : previous.purchase_date,
+                    name === "warranty_years" ? value : previous.warranty_years
+                );
+            }
+            return next;
+        });
     }
 
     // บันทึกการแก้ไข Asset
@@ -975,7 +1018,7 @@ export default function AssetManagement({
             location: editForm.location.trim() || null,
             purchase_date: editForm.purchase_date || null,
             purchase_price: purchasePrice,
-            warranty_expiry: editForm.warranty_expiry || null,
+            warranty_expiry: calculateWarrantyExpiry(editForm.purchase_date, editForm.warranty_years) || editForm.warranty_expiry || null,
         };
 
         // เปลี่ยนหมวดหมู่เฉพาะเมื่อผู้ใช้เลือกหมวดหมู่ใหม่
@@ -1815,15 +1858,27 @@ export default function AssetManagement({
                                             />
                                         </label>
 
-                                        {/* Warranty */}
+                                        {/* Warranty Duration */}
                                         <label className="styled-field">
-                                            <span>วันหมดประกัน</span>
-                                            <input
-                                                type="date"
-                                                name="warranty_expiry"
-                                                value={assetForm.warranty_expiry}
+                                            <span>ระยะเวลารับประกัน</span>
+                                            <select
+                                                name="warranty_years"
+                                                value={assetForm.warranty_years}
                                                 onChange={handleAssetFormChange}
-                                            />
+                                                disabled={!assetForm.purchase_date}
+                                            >
+                                                <option value="">-- ไม่ระบุ --</option>
+                                                {[1, 2, 3, 4, 5].map((year) => (
+                                                    <option key={year} value={String(year)}>
+                                                        {year}Y ({year} ปี)
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <small>
+                                                {assetForm.warranty_expiry
+                                                    ? `วันหมดประกัน: ${assetForm.warranty_expiry}`
+                                                    : "เลือกวันที่ซื้อก่อน เพื่อคำนวณวันหมดประกัน"}
+                                            </small>
                                         </label>
 
                                         {/* Description */}
@@ -3029,13 +3084,25 @@ export default function AssetManagement({
                                         </label>
 
                                         <label className="styled-field">
-                                            <span>วันหมดประกัน</span>
-                                            <input
-                                                type="date"
-                                                name="warranty_expiry"
-                                                value={editForm.warranty_expiry || ""}
+                                            <span>ระยะเวลารับประกัน</span>
+                                            <select
+                                                name="warranty_years"
+                                                value={editForm.warranty_years || ""}
                                                 onChange={handleEditFormChange}
-                                            />
+                                                disabled={!editForm.purchase_date}
+                                            >
+                                                <option value="">-- ไม่ระบุ --</option>
+                                                {[1, 2, 3, 4, 5].map((year) => (
+                                                    <option key={year} value={String(year)}>
+                                                        {year}Y ({year} ปี)
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <small>
+                                                {editForm.warranty_expiry
+                                                    ? `วันหมดประกัน: ${editForm.warranty_expiry}`
+                                                    : "เลือกวันที่ซื้อและระยะเวลารับประกัน"}
+                                            </small>
                                         </label>
 
                                         <label className="styled-field full-field">
