@@ -9,25 +9,10 @@ from sqlalchemy.exc import IntegrityError
 from app.core.dependencies import DbSession, CurrentUser, require_roles
 from app.models.user import User
 from app.models.asset import Asset, AssetCategory, AssetStockTransaction, AssetAssignment, AssetTransfer, AssetMaintenance
-from app.schemas.asset import (
-    AssetCreate,
-    AssetUpdate,
-    AssetResponse,
-    AssetCategoryResponse,
-    StockTransactionCreate,
-    AssetAssignmentCreate,
-    AssetReturnCreate,
-    AssetAssignmentResponse,
-    AssetTransferCreate,
-    AssetTransferResponse,
-    AssetMaintenanceCreate,
-    AssetMaintenanceResponse,
-    AssetCategoryCreate,
-    AssetCategoryUpdate,
-    AssetDisposalCreate,
-    AssetDashboardSummary,
-    AssetAssignableUserResponse,
-    StockTransactionResponse,
+from app.schemas.asset import (AssetCreate, AssetUpdate, AssetResponse, AssetCategoryResponse, StockTransactionCreate,
+    AssetAssignmentCreate, AssetReturnCreate, AssetAssignmentResponse, AssetTransferCreate, AssetTransferResponse,
+    AssetMaintenanceCreate, AssetMaintenanceResponse, AssetCategoryCreate, AssetCategoryUpdate, AssetDisposalCreate,
+    AssetDashboardSummary, AssetAssignableUserResponse, StockTransactionResponse,
 )
 
 router = APIRouter(
@@ -203,13 +188,30 @@ def assign_asset(
         )
 
     # 4. ตรวจสอบพนักงานผู้รับ
-    assignee = db.get(User, payload.assigned_to)
+    assignee = None
+    assignee_name = None
 
-    if assignee is None or not assignee.is_active:
-        raise HTTPException(
-            status_code=400,
-            detail="Assigned user not found or inactive",
-        )
+    if payload.assigned_to is not None:
+        # กรณีเลือก User จากระบบ
+        assignee = db.get(User, payload.assigned_to)
+
+        if assignee is None or not assignee.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail="Assigned user not found or inactive"
+            )
+
+        assignee_name = assignee.full_name or assignee.username
+
+    else:
+        # กรณีพิมพ์ชื่อผู้รับเอง
+        assignee_name = (payload.assigned_to_name or "").strip()
+
+        if not assignee_name:
+            raise HTTPException(
+                status_code=400,
+                detail="กรุณาระบุชื่อผู้รับทรัพย์สิน"
+            )
 
     # 5. ตรวจสอบว่ามีรายการที่ยังไม่คืนอยู่หรือไม่
     active_assignment = db.scalar(
@@ -228,7 +230,8 @@ def assign_asset(
     # 6. บันทึกข้อมูลการจ่าย
     assignment = AssetAssignment(
         asset_id=asset.id,
-        assigned_to=assignee.id,
+        assigned_to=assignee.id if assignee else None,
+        assigned_to_name=assignee_name,
         assigned_by=user.id,
         note=payload.note,
     )
@@ -460,14 +463,37 @@ def create_stock_transaction(
     quantity_before = asset.quantity_on_hand
 
     # ตรวจสอบผู้รับสินค้า
+    recipient_name = None
+
     if payload.transaction_type == "ISSUE":
+
         if payload.issued_to is not None:
+            # กรณีเลือก User จาก Dropdown
             recipient = db.get(User, payload.issued_to)
 
             if recipient is None or not recipient.is_active:
                 raise HTTPException(
                     status_code=400,
                     detail="Recipient user not found or inactive"
+                )
+
+            # ใช้ชื่อจริงจาก Database
+            recipient_name = (
+                recipient.full_name or recipient.username
+            )
+
+        else:
+            # กรณีพิมพ์ชื่อผู้รับเอง
+            recipient_name = (
+                payload.issued_to_name.strip()
+                if payload.issued_to_name
+                else None
+            )
+
+            if not recipient_name:
+                raise HTTPException(
+                    status_code=400,
+                    detail="กรุณาระบุชื่อผู้รับอุปกรณ์"
                 )
 
         # ตรวจสอบ Stock ก่อนเบิก
@@ -477,19 +503,18 @@ def create_stock_transaction(
                 detail=f"Insufficient stock. Available: {quantity_before}"
             )
 
-        # ตัด Stock อัตโนมัติ
+        # ตัด Stock
         asset.quantity_on_hand -= payload.quantity
 
     elif payload.transaction_type == "RECEIVE":
 
-        # รายการรับเข้าไม่ควรระบุผู้รับ
-        if payload.issued_to is not None:
+        if payload.issued_to is not None or payload.issued_to_name:
             raise HTTPException(
                 status_code=400,
-                detail="issued_to must be empty for RECEIVE transaction"
+                detail="ไม่ต้องระบุผู้รับสำหรับรายการ RECEIVE"
             )
 
-        # เพิ่ม Stock อัตโนมัติ
+        # เพิ่ม Stock
         asset.quantity_on_hand += payload.quantity
 
     # จำนวนหลังทำรายการ
@@ -502,11 +527,15 @@ def create_stock_transaction(
         quantity=payload.quantity,
         quantity_before=quantity_before,
         quantity_after=quantity_after,
+
         issued_to=(
             payload.issued_to
             if payload.transaction_type == "ISSUE"
             else None
         ),
+
+        issued_to_name=recipient_name,
+
         reference_no=payload.reference_no,
         performed_by=user.id,
         note=payload.note,

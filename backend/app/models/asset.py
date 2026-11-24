@@ -1,22 +1,9 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import (
-    Boolean,
-    CheckConstraint,
-    Date,
-    DateTime,
-    ForeignKey,
-    Integer,
-    Numeric,
-    String,
-    Text,
-    func,
-)
+from sqlalchemy import (Boolean, Date, DateTime, ForeignKey, Integer, Numeric,String, Text, func,)
 from sqlalchemy.orm import Mapped, mapped_column
-
 from app.core.database import Base
-
 
 class AssetCategory(Base):
     __tablename__ = "asset_categories"
@@ -29,7 +16,6 @@ class AssetCategory(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-
 
 class Asset(Base):
     __tablename__ = "assets"
@@ -84,25 +70,50 @@ class Asset(Base):
         Text, nullable=True
     )
 
-
 class AssetAssignment(Base):
     __tablename__ = "asset_assignments"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"))
-    assigned_to: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    assigned_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    assigned_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    returned_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    returned_by: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )
-    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    asset_id: Mapped[int] = mapped_column(
+        ForeignKey("assets.id")
+    )
+
+    # User ในระบบ (ไม่จำเป็นต้องมี หากระบุชื่อเอง)
+    assigned_to: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True
+    )
+
+    # ชื่อผู้รับที่บันทึก ณ เวลาที่ Assign
+    assigned_to_name: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True
+    )
+
+    assigned_by: Mapped[int] = mapped_column(
+        ForeignKey("users.id")
+    )
+
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+
+    returned_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    returned_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True
+    )
+
+    note: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True
+    )
 
 class AssetTransfer(Base):
     __tablename__ = "asset_transfers"
@@ -116,7 +127,6 @@ class AssetTransfer(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-
 
 class AssetMaintenance(Base):
     __tablename__ = "asset_maintenance"
@@ -138,7 +148,6 @@ class AssetMaintenance(Base):
     )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-
 class AssetStockTransaction(Base):
     __tablename__ = "asset_stock_transactions"
 
@@ -157,7 +166,14 @@ class AssetStockTransaction(Base):
 
     # ผู้รับอุปกรณ์ (ใช้กับรายการ ISSUE)
     issued_to: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
+        ForeignKey("users.id"),
+        nullable=True
+    )
+
+    # ชื่อผู้รับที่ระบุเอง หรือ Snapshot ชื่อ User
+    issued_to_name: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True
     )
 
     reference_no: Mapped[str | None] = mapped_column(

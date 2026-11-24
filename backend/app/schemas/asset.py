@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 TrackingType = Literal["INDIVIDUAL", "QUANTITY"]
 
@@ -72,15 +72,57 @@ class StockTransactionCreate(BaseModel):
     transaction_type: Literal["RECEIVE", "ISSUE"]
     quantity: int = Field(gt=0)
 
-    # ผู้รับสินค้า กรณี ISSUE
+    # เลือก User ในระบบได้
     issued_to: int | None = None
+
+    # หรือระบุชื่อผู้รับเอง
+    issued_to_name: str | None = Field(
+        default=None,
+        max_length=200
+    )
 
     reference_no: str | None = None
     note: str | None = None
 
+    @model_validator(mode="after")
+    def validate_recipient(self):
+        if self.transaction_type == "ISSUE":
+            if not self.issued_to and not (
+                self.issued_to_name and self.issued_to_name.strip()
+            ):
+                raise ValueError(
+                    "กรุณาระบุผู้รับอุปกรณ์"
+                )
+
+        if self.issued_to_name:
+            self.issued_to_name = self.issued_to_name.strip()
+
+        return self
+
 class AssetAssignmentCreate(BaseModel):
-    assigned_to: int
+    assigned_to: int | None = None
+
+    assigned_to_name: str | None = Field(
+        default=None,
+        max_length=200
+    )
+
     note: str | None = None
+
+    @model_validator(mode="after")
+    def validate_recipient(self):
+        if not self.assigned_to and not (
+            self.assigned_to_name
+            and self.assigned_to_name.strip()
+        ):
+            raise ValueError(
+                "กรุณาระบุผู้รับทรัพย์สิน"
+            )
+
+        if self.assigned_to_name:
+            self.assigned_to_name = self.assigned_to_name.strip()
+
+        return self
 
 class AssetReturnCreate(BaseModel):
     note: str | None = None
@@ -90,7 +132,8 @@ class AssetAssignmentResponse(BaseModel):
 
     id: int
     asset_id: int
-    assigned_to: int
+    assigned_to: int | None = None
+    assigned_to_name: str | None = None
     assigned_by: int
     assigned_at: datetime
     returned_at: datetime | None = None
@@ -177,6 +220,7 @@ class StockTransactionResponse(BaseModel):
     quantity_before: int | None = None
     quantity_after: int | None = None
     issued_to: int | None = None
+    issued_to_name: str | None = None
     reference_no: str | None = None
     performed_by: int
     transaction_date: datetime

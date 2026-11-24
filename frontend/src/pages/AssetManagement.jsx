@@ -178,6 +178,8 @@ export default function AssetManagement({
     const [stockType, setStockType] = useState("ISSUE");
     const [stockQuantity, setStockQuantity] = useState("1");
     const [stockRecipient, setStockRecipient] = useState("");
+    const [stockRecipientSearch, setStockRecipientSearch] = useState("");
+    const [showStockRecipientOptions, setShowStockRecipientOptions] = useState(false);
     const [stockReference, setStockReference] = useState("");
     const [stockNote, setStockNote] = useState("");
 
@@ -692,8 +694,8 @@ export default function AssetManagement({
             setStockError("กรุณาระบุจำนวนเป็นจำนวนเต็มมากกว่า 0");
             return;
         }
-        if (stockType === "ISSUE" && !stockRecipient) {
-            setStockError("กรุณาเลือกผู้รับอุปกรณ์");
+        if (stockType === "ISSUE" && !stockRecipientSearch.trim()) {
+            setStockError("กรุณาระบุชื่อผู้รับอุปกรณ์");
             return;
         }
 
@@ -705,7 +707,8 @@ export default function AssetManagement({
             const payload = {
                 transaction_type: stockType,
                 quantity,
-                issued_to: stockType === "ISSUE" ? Number(stockRecipient) : null,
+                issued_to: stockType === "ISSUE" && stockRecipient ? Number(stockRecipient) : null,
+                issued_to_name: stockType === "ISSUE" ? stockRecipientSearch.trim() || null : null,
                 reference_no: stockReference.trim() || null,
                 note: stockNote.trim() || null,
             };
@@ -720,6 +723,8 @@ export default function AssetManagement({
             );
             setStockQuantity("1");
             setStockRecipient("");
+            setStockRecipientSearch("");
+            setShowStockRecipientOptions(false);
             setStockReference("");
             setStockNote("");
 
@@ -759,8 +764,8 @@ export default function AssetManagement({
     async function handleAssignAsset(event) {
         event.preventDefault();
 
-        if (!selectedAsset || !assignedTo) {
-            setAssignmentError("กรุณาเลือกผู้รับทรัพย์สิน");
+        if (!selectedAsset || !assignUserSearch.trim()) {
+            setAssignmentError("กรุณาระบุชื่อผู้รับทรัพย์สิน");
             return;
         }
 
@@ -772,7 +777,8 @@ export default function AssetManagement({
             await api.post(
                 `/assets/${selectedAsset.id}/assign`,
                 {
-                    assigned_to: Number(assignedTo),
+                    assigned_to: assignedTo ? Number(assignedTo) : null,
+                    assigned_to_name: assignUserSearch.trim(),
                     note: assignmentNote.trim() || null,
                 }
             );
@@ -1036,11 +1042,18 @@ export default function AssetManagement({
 
     const filteredAssignableUsers = assignableUsers.filter((item) => {
         const search = assignUserSearch.toLowerCase().trim();
-
         return (
             (item.full_name || "").toLowerCase().includes(search) ||
             (item.username || "").toLowerCase().includes(search) ||
             (item.department || "").toLowerCase().includes(search)
+        );
+    });
+
+    const filteredStockRecipientUsers = assignableUsers.filter((item) => {
+        const q = stockRecipientSearch.trim().toLowerCase();
+        if (!q) return true;
+        return [item.full_name, item.username, item.department].some((value) =>
+            String(value || "").toLowerCase().includes(q)
         );
     });
 
@@ -2323,13 +2336,11 @@ export default function AssetManagement({
 
                                                                         <div className="styled-field full-field">
                                                                             <span>ผู้รับทรัพย์สิน *</span>
-
                                                                             <div style={{ position: "relative" }}>
-
                                                                                 <input
                                                                                     type="text"
                                                                                     value={assignUserSearch}
-                                                                                    placeholder="พิมพ์ค้นหาชื่อ หรือ Username..."
+                                                                                    placeholder="ค้นหาชื่อ/Username หรือพิมพ์ชื่อผู้รับเอง..."
                                                                                     autoComplete="off"
                                                                                     onFocus={() => setShowUserOptions(true)}
                                                                                     onChange={(event) => {
@@ -2360,7 +2371,7 @@ export default function AssetManagement({
                                                                                             overflowY: "auto",
                                                                                         }}
                                                                                     >
-                                                                                        {filteredAssignableUsers.length > 0 ? (
+                                                                                        {filteredAssignableUsers.length > 0 && (
                                                                                             filteredAssignableUsers.map((item) => (
                                                                                                 <button
                                                                                                     key={item.id}
@@ -2401,21 +2412,14 @@ export default function AssetManagement({
                                                                                                     </div>
                                                                                                 </button>
                                                                                             ))
-                                                                                        ) : (
-                                                                                            <div
-                                                                                                style={{
-                                                                                                    padding: "15px",
-                                                                                                    textAlign: "center",
-                                                                                                    color: "#8492a6",
-                                                                                                }}
-                                                                                            >
-                                                                                                ไม่พบรายชื่อผู้ใช้งาน
-                                                                                            </div>
                                                                                         )}
                                                                                     </div>
                                                                                 )}
 
                                                                             </div>
+                                                                            <small style={{ color: "#64748b" }}>
+                                                                                เลือกจากรายชื่อ หรือพิมพ์ชื่อผู้รับทรัพย์สินเองได้
+                                                                            </small>
                                                                         </div>
 
                                                                         <label className="styled-field full-field">
@@ -2476,10 +2480,12 @@ export default function AssetManagement({
                                                                             <input
                                                                                 value={
                                                                                     activeAssignment
-                                                                                        ? userMap[activeAssignment.assigned_to] ||
-                                                                                        `User #${activeAssignment.assigned_to}`
-                                                                                        : "ไม่พบข้อมูลผู้ครอบครอง"
-                                                                                }
+                                                                                        ? activeAssignment.assigned_to_name ||
+                                                                                        (activeAssignment.assigned_to
+                                                                                            ? userMap[activeAssignment.assigned_to] ||
+                                                                                                `User #${activeAssignment.assigned_to}`
+                                                                                            : "-")
+                                                                                        : "ไม่พบข้อมูลผู้ครอบครอง"}
                                                                                 disabled
                                                                             />
                                                                         </label>
@@ -2556,8 +2562,11 @@ export default function AssetManagement({
                                                                                 {assignments.map((item) => (
                                                                                     <tr key={item.id}>
                                                                                         <td>
-                                                                                            {userMap[item.assigned_to] ||
-                                                                                                `User #${item.assigned_to}`}
+                                                                                            {item.assigned_to_name ||
+                                                                                                (item.assigned_to
+                                                                                                    ? userMap[item.assigned_to] || `User #${item.assigned_to}`
+                                                                                                    : "-")
+                                                                                            }
                                                                                         </td>
 
                                                                                         <td>
@@ -2674,6 +2683,8 @@ export default function AssetManagement({
                                                                     onChange={(event) => {
                                                                         setStockType(event.target.value);
                                                                         setStockRecipient("");
+                                                                        setStockRecipientSearch("");
+                                                                        setShowStockRecipientOptions(false);
                                                                         setStockError("");
                                                                     }}
                                                                 >
@@ -2688,20 +2699,63 @@ export default function AssetManagement({
                                                             </label>
 
                                                             {stockType === "ISSUE" && (
-                                                                <label className="styled-field full-field">
-                                                                    <span>ผู้รับอุปกรณ์ *</span>
-                                                                    <select value={stockRecipient}
-                                                                        onChange={(event) => setStockRecipient(event.target.value)} required>
-                                                                        <option value="">-- เลือกผู้รับอุปกรณ์ --</option>
-                                                                        {assignableUsers.map((item) => (
-                                                                            <option key={item.id} value={item.id}>
-                                                                                {item.full_name || item.username} ({item.username})
-                                                                                {item.department ? ` - ${item.department}` : ""}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                </label>
-                                                            )}
+                                                                    <div className="styled-field full-field">
+                                                                        <span>ผู้รับอุปกรณ์ *</span>
+                                                                        <div style={{ position: "relative" }}>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={stockRecipientSearch}
+                                                                                placeholder="ค้นหาชื่อ/Username หรือพิมพ์ชื่อผู้รับเอง..."
+                                                                                autoComplete="off"
+                                                                                onFocus={() => setShowStockRecipientOptions(true)}
+                                                                                onChange={(event) => {
+                                                                                    setStockRecipientSearch(event.target.value);
+                                                                                    setStockRecipient("");
+                                                                                    setShowStockRecipientOptions(true);
+                                                                                }}
+                                                                                onKeyDown={(event) => {
+                                                                                    if (event.key === "Escape") setShowStockRecipientOptions(false);
+                                                                                }}
+                                                                                required
+                                                                            />
+                                                                            {showStockRecipientOptions && (
+                                                                                <div style={{
+                                                                                    position: "absolute", top: "calc(100% + 5px)",
+                                                                                    left: 0, right: 0, zIndex: 100,
+                                                                                    background: "#fff", border: "1px solid #dbe3ef",
+                                                                                    borderRadius: "10px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                                                                                    maxHeight: "220px", overflowY: "auto",
+                                                                                }}>
+                                                                                    {filteredStockRecipientUsers.length > 0 && (
+                                                                                        filteredStockRecipientUsers.map((item) => (
+                                                                                            <button
+                                                                                                key={item.id}
+                                                                                                type="button"
+                                                                                                onMouseDown={(event) => event.preventDefault()}
+                                                                                                onClick={() => {
+                                                                                                    setStockRecipient(String(item.id));
+                                                                                                    setStockRecipientSearch(`${item.full_name || item.username} (${item.username})${item.department ? ` - ${item.department}` : ""}`);
+                                                                                                    setShowStockRecipientOptions(false);
+                                                                                                }}
+                                                                                                style={{
+                                                                                                    display: "block", width: "100%", padding: "12px 14px",
+                                                                                                    border: "none", borderBottom: "1px solid #edf0f5",
+                                                                                                    background: "white", textAlign: "left", cursor: "pointer",
+                                                                                                }}
+                                                                                            >
+                                                                                                <strong>{item.full_name || item.username}</strong>
+                                                                                                <span style={{ color: "#64748b" }}> ({item.username}){item.department ? ` - ${item.department}` : ""}</span>
+                                                                                            </button>
+                                                                                        ))
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <small style={{ color: "#64748b" }}>
+                                                                            เลือกจากรายชื่อ หรือพิมพ์ชื่อผู้รับอุปกรณ์เองได้
+                                                                        </small>
+                                                                    </div>
+                                                                )}
 
                                                             <label className="styled-field">
                                                                 <span>เลขที่เอกสารอ้างอิง</span>
@@ -2754,7 +2808,13 @@ export default function AssetManagement({
                                                                                 <td>{item.quantity}</td>
                                                                                 <td>{item.quantity_before ?? "-"}</td>
                                                                                 <td>{item.quantity_after ?? "-"}</td>
-                                                                                <td>{item.issued_to ? userMap[item.issued_to] || `User #${item.issued_to}` : "-"}</td>
+                                                                                <td>
+                                                                                    {item.issued_to_name ||
+                                                                                        (item.issued_to
+                                                                                        ? userMap[item.issued_to] || `User #${item.issued_to}`
+                                                                                        : "-")
+                                                                                    }
+                                                                                </td>
                                                                                 <td>{item.reference_no || "-"}</td>
                                                                                 <td>{userMap[item.performed_by] || `User #${item.performed_by}`}</td>
                                                                                 <td>{item.note || "-"}</td>
