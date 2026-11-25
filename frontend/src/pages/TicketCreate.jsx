@@ -1,3 +1,5 @@
+import { notifications } from "../utils/notifications";
+import useNotificationState from "../hooks/useNotificationState";
 import { useEffect, useRef, useState } from "react";
 import {AlertCircle, FileText, Paperclip, Send, Ticket, Trash2, Upload, Wrench } from "lucide-react";
 import api from "../api/client";
@@ -24,7 +26,7 @@ export default function TicketCreate({ onCreated }) {
   const [categoryId, setCategoryId] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
   const [files, setFiles] = useState([]);
-  const [error, setError] = useState("");
+  const [error, setError] = useNotificationState("error");
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -98,6 +100,7 @@ export default function TicketCreate({ onCreated }) {
         );
       }
 
+      void notifications.success("สร้าง Ticket สำเร็จ");
       onCreated(response.data);
     } catch (err) {
       console.error("Ticket upload error:", err.response?.data || err);

@@ -1,3 +1,5 @@
+import { notifications } from "../utils/notifications";
+import useNotificationState from "../hooks/useNotificationState";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {Check, CircleUserRound, LockKeyhole, Plus, RefreshCw, Search,ShieldCheck,UserPlus,
   Users,X,FileUp,KeyRound,UserRoundPen,Download
@@ -39,8 +41,8 @@ export default function UserManagement({
   const [editingUser, setEditingUser] = useState(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [error, setError] = useNotificationState("error");
+  const [message, setMessage] = useNotificationState("success");
 
   const importFileRef = useRef(null);
   const [importLoading, setImportLoading] = useState(false);
@@ -50,7 +52,7 @@ export default function UserManagement({
   const [resetUser, setResetUser] = useState(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [resetError, setResetError] = useState("");
+  const [resetError, setResetError] = useNotificationState("error");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -238,7 +240,7 @@ export default function UserManagement({
       return;
     }
 
-    const confirmed = window.confirm(
+    const confirmed = await notifications.confirm(
       `ยืนยันนำเข้าผู้ใช้งานจากไฟล์ "${file.name}" หรือไม่?\n\n` +
         "ระบบจะข้าม Username ที่มีอยู่แล้ว และไม่แก้ไขข้อมูลเดิม"
     );

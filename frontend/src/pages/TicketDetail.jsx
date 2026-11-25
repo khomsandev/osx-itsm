@@ -1,3 +1,5 @@
+import { notifications } from "../utils/notifications";
+import useNotificationState from "../hooks/useNotificationState";
 import { useCallback, useEffect,useRef, useState } from "react";
 import {AlertCircle, ArrowLeft, CheckCircle2, Clock3, History, MessageSquare, Paperclip,
   Download, RefreshCw, Send, ShieldCheck, UserRound, Wrench, X,
@@ -66,7 +68,7 @@ export default function TicketDetail({
   const [comment, setComment] = useState("");
   const [status, setStatus] = useState("");
   const [statusNote, setStatusNote] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useNotificationState("error");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [statusFiles, setStatusFiles] = useState([]);
@@ -114,6 +116,7 @@ export default function TicketDetail({
 
     try {
       await api.post(`/tickets/${ticketId}/assign-to-me`);
+      void notifications.success("รับงานสำเร็จ");
       await loadDetail();
       await onUpdated?.();
     } catch (err) {
@@ -204,6 +207,7 @@ export default function TicketDetail({
         formData
       );
 
+      void notifications.success("อัปเดตสถานะสำเร็จ");
       setStatusNote("");
       setStatusFiles([]);
 
@@ -259,6 +263,7 @@ export default function TicketDetail({
         comment: comment.trim(),
       });
 
+      void notifications.success("บันทึกความคิดเห็นสำเร็จ");
       setComment("");
       await loadDetail();
     } catch (err) {

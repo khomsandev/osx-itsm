@@ -1,3 +1,4 @@
+import useNotificationState from "../hooks/useNotificationState";
 import { useState } from "react";
 import { ArrowRight, Eye, EyeOff, Headset, LockKeyhole, ShieldCheck, UserRound, Wrench } from "lucide-react";
 import api from "../api/client";
@@ -7,7 +8,7 @@ import usePageTitle from "../hooks/usePageTitle";
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useNotificationState("error");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -22,7 +23,7 @@ export default function Login({ onLogin }) {
       onLogin(userResponse.data);
     } catch (err) {
       sessionStorage.removeItem("access_token");
-      setError(err.response?.data?.detail || "ไม่สามารถเข้าสู่ระบบได้ กรุณาตรวจสอบข้อมูลอีกครั้ง");
+      setError("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบข้อมูลอีกครั้ง");
     } finally {
       setLoading(false);
     }

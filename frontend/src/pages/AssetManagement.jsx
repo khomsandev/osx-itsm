@@ -1,3 +1,5 @@
+import { notifications } from "../utils/notifications";
+import useNotificationState from "../hooks/useNotificationState";
 import { useCallback, useEffect, useState } from "react";
 import {Package,Search,RefreshCw,AlertCircle,MapPin,Hash,Monitor,Boxes,Users,Wrench,Archive,AlertTriangle,Layers,
     Plus,X,Save,Eye,Pencil,UserPlus,RotateCcw,History,Upload,
@@ -86,7 +88,7 @@ export default function AssetManagement({
     });
 
     const [summaryLoading, setSummaryLoading] = useState(true);
-    const [summaryError, setSummaryError] = useState("");
+    const [summaryError, setSummaryError] = useNotificationState("error");
 
     const [keyword, setKeyword] = useState("");
     const [searchKeyword, setSearchKeyword] = useState("");
@@ -95,15 +97,15 @@ export default function AssetManagement({
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState("");
+    const [error, setError] = useNotificationState("error");
 
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
 
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [createError, setCreateError] = useState("");
-    const [createSuccess, setCreateSuccess] = useState("");
+    const [createError, setCreateError] = useNotificationState("error");
+    const [createSuccess, setCreateSuccess] = useNotificationState("success");
 
     const initialAssetForm = {
         asset_name: "",
@@ -130,14 +132,14 @@ export default function AssetManagement({
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
     const [detailLoading, setDetailLoading] = useState(false);
-    const [detailError, setDetailError] = useState("");
+    const [detailError, setDetailError] = useNotificationState("error");
 
     // Asset Image Upload
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState("");
     const [imageUploading, setImageUploading] = useState(false);
-    const [imageUploadError, setImageUploadError] = useState("");
-    const [imageUploadSuccess, setImageUploadSuccess] = useState("");
+    const [imageUploadError, setImageUploadError] = useNotificationState("error");
+    const [imageUploadSuccess, setImageUploadSuccess] = useNotificationState("success");
 
     // คืนหน่วยความจำ Preview เมื่อเปลี่ยนรูปหรือปิด Component
     useEffect(() => {
@@ -159,8 +161,8 @@ export default function AssetManagement({
     // Asset Edit
     const [showEditForm, setShowEditForm] = useState(false);
     const [editSaving, setEditSaving] = useState(false);
-    const [editError, setEditError] = useState("");
-    const [editSuccess, setEditSuccess] = useState("");
+    const [editError, setEditError] = useNotificationState("error");
+    const [editSuccess, setEditSuccess] = useNotificationState("success");
 
     const [editForm, setEditForm] = useState({
         asset_name: "",
@@ -189,15 +191,15 @@ export default function AssetManagement({
     const [returnNote, setReturnNote] = useState("");
 
     const [assignmentSaving, setAssignmentSaving] = useState(false);
-    const [assignmentError, setAssignmentError] = useState("");
-    const [assignmentSuccess, setAssignmentSuccess] = useState("");
+    const [assignmentError, setAssignmentError] = useNotificationState("error");
+    const [assignmentSuccess, setAssignmentSuccess] = useNotificationState("success");
 
     // Quantity Stock Transaction
     const [stockTransactions, setStockTransactions] = useState([]);
     const [stockLoading, setStockLoading] = useState(false);
     const [stockSaving, setStockSaving] = useState(false);
-    const [stockError, setStockError] = useState("");
-    const [stockSuccess, setStockSuccess] = useState("");
+    const [stockError, setStockError] = useNotificationState("error");
+    const [stockSuccess, setStockSuccess] = useNotificationState("success");
     const [stockType, setStockType] = useState("ISSUE");
     const [stockQuantity, setStockQuantity] = useState("1");
     const [stockRecipient, setStockRecipient] = useState("");
@@ -834,7 +836,7 @@ export default function AssetManagement({
 
         if (!selectedAsset) return;
 
-        const confirmed = window.confirm(
+        const confirmed = await notifications.confirm(
             "ยืนยันการรับคืนทรัพย์สินรายการนี้หรือไม่?"
         );
 

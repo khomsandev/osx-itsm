@@ -1,0 +1,22 @@
+/* ให้ SweetAlert2 อยู่เหนือ Modal เดิมของระบบ */
+.swal2-container {
+  z-index: 20000 !important;
+}
+
+/* Default Popup Style */
+.osx-swal-popup {
+  font-family: Inter, "IBM Plex Sans Thai", Arial, sans-serif;
+  border-radius: 16px;
+}
+
+/* รองรับข้อความหลายบรรทัด */
+.osx-swal-popup .swal2-html-container {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* Button Style */
+.osx-swal-popup .swal2-confirm,
+.osx-swal-popup .swal2-cancel {
+  border-radius: 8px;
+}

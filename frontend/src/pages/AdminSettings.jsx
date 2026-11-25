@@ -1,3 +1,5 @@
+import { notifications } from "../utils/notifications";
+import useNotificationState from "../hooks/useNotificationState";
 import { useCallback, useEffect, useState } from "react";
 import {AlertCircle,CheckCircle2,FolderCog,Plus,RefreshCw,Save,Settings,ToggleLeft,
   ToggleRight,Users,X
@@ -133,8 +135,8 @@ export default function AdminSettings({
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [error, setError] = useNotificationState("error");
+  const [notice, setNotice] = useNotificationState("success");
   const [showInactive, setShowInactive] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [name, setName] = useState("");
@@ -223,7 +225,7 @@ export default function AdminSettings({
 
   async function toggleCategory(category) {
     const action = category.is_active ? "ปิด" : "เปิด";
-    const confirmed = window.confirm(
+    const confirmed = await notifications.confirm(
       `ต้องการ${action}ใช้งานหมวดหมู่ "${category.name}" หรือไม่?`,
     );
 

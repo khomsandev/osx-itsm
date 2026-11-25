@@ -1,3 +1,4 @@
+import useNotificationState from "../hooks/useNotificationState";
 import { useCallback, useEffect, useState } from "react";
 import {Activity,AlertCircle,ArrowUpRight,CheckCircle2,ClipboardList,Clock3,Plus,
   RefreshCw,ShieldCheck,FunnelX
@@ -32,7 +33,7 @@ const ROLE_LABELS = {
 
 export default function Dashboard({ user, onLogout }) {
   const [tickets, setTickets] = useState([]);
-  const [error, setError] = useState("");
+  const [error, setError] = useNotificationState("error");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [showUsers, setShowUsers] = useState(false);

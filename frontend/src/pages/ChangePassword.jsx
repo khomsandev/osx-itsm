@@ -1,3 +1,4 @@
+import useNotificationState from "../hooks/useNotificationState";
 import { useState } from "react";
 import { ArrowRight,Eye,EyeOff,KeyRound,LockKeyhole,ShieldCheck } from "lucide-react";
 import api from "../api/client";
@@ -13,8 +14,8 @@ export default function ChangePassword({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [error, setError] = useNotificationState("error");
+  const [message, setMessage] = useNotificationState("success");
 
   usePageTitle("เปลี่ยนรหัสผ่าน");
 
@@ -60,8 +61,7 @@ export default function ChangePassword({
       onPasswordChanged(response.data);
     } catch (err) {
       setError(
-        err.response?.data?.detail ||
-          "เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาลองอีกครั้ง"
+          "เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาลองอีกครั้ง!"
       );
     } finally {
       setLoading(false);
