@@ -2,9 +2,10 @@ import { notifications } from "../utils/notifications";
 import useNotificationState from "../hooks/useNotificationState";
 import { useCallback, useEffect, useState } from "react";
 import {Package,Search,RefreshCw,AlertCircle,MapPin,Hash,Monitor,Boxes,Users,Wrench,Archive,AlertTriangle,Layers,
-    Plus,X,Save,Eye,Pencil,UserPlus,RotateCcw,History,Upload,
+    Plus,X,Save,Eye,Pencil,UserPlus,RotateCcw,History,Upload,Printer,
 } from "lucide-react";
 
+import AssetLabelPrintModal from "../components/asset-label/AssetLabelPrintModal";
 import api from "../api/client";
 import AppSidebar from "../components/AppSidebar";
 
@@ -75,6 +76,11 @@ export default function AssetManagement({
 }) {
     const [assets, setAssets] = useState([]);
     const [categories, setCategories] = useState([]);
+
+    // Asset Label Printing
+    const [selectedPrintIds, setSelectedPrintIds] = useState([]);
+    const [printAssets, setPrintAssets] = useState([]);
+    const [showPrintModal, setShowPrintModal] = useState(false);
 
     const [summary, setSummary] = useState({
         total_assets: 0,
@@ -242,6 +248,7 @@ export default function AssetManagement({
 
             setAssets(Array.isArray(response.data) ? response.data : []);
             setCurrentPage(1);
+            setSelectedPrintIds([]);
         } catch (err) {
             setError(
                 err.response?.data?.detail ||
@@ -527,6 +534,65 @@ export default function AssetManagement({
             setSaving(false);
         }
     }
+
+
+    // เลือกหรือยกเลิก Asset สำหรับพิมพ์
+    function handleTogglePrintAsset(assetId) {
+        setSelectedPrintIds(previous =>
+            previous.includes(assetId)
+                ? previous.filter(id => id !== assetId)
+                : [...previous, assetId]
+        );
+    }
+
+    // ยกเลิกการเลือกทั้งหมด
+    function handleClearPrintSelection() {
+        setSelectedPrintIds([]);
+    }
+
+    // พิมพ์ Asset รายชิ้น
+    function handlePrintSingle(asset) {
+        if (!asset?.asset_code) {
+            void notifications.warning(
+                "ไม่พบ Asset Code ของทรัพย์สิน"
+            );
+            return;
+        }
+
+        setPrintAssets([asset]);
+        setShowPrintModal(true);
+    }
+
+    // พิมพ์ Asset หลายรายการ
+    function handlePrintSelected() {
+        const selected = assets.filter(asset =>
+            selectedPrintIds.includes(asset.id)
+        );
+
+        if (selected.length === 0) {
+            void notifications.warning(
+                "กรุณาเลือกทรัพย์สินที่ต้องการพิมพ์"
+            );
+            return;
+        }
+
+        if (selected.some(asset => !asset.asset_code)) {
+            void notifications.warning(
+                "พบทรัพย์สินที่ไม่มี Asset Code"
+            );
+            return;
+        }
+
+        setPrintAssets(selected);
+        setShowPrintModal(true);
+    }
+
+    // ปิด Print Preview
+    function handleClosePrintModal() {
+        setShowPrintModal(false);
+        setPrintAssets([]);
+    }
+
 
     // เปิดดูรายละเอียด Asset
     async function handleViewAsset(assetId) {
@@ -1121,6 +1187,37 @@ export default function AssetManagement({
         startIndex + pageSize
     );
 
+    const allCurrentPageSelected =
+        paginatedAssets.length > 0 &&
+        paginatedAssets.every(asset =>
+            selectedPrintIds.includes(asset.id)
+        );
+
+    function handleToggleAllPrintAssets() {
+        const currentPageIds = paginatedAssets.map(
+            asset => asset.id
+        );
+
+        setSelectedPrintIds(previous => {
+            const allSelected = currentPageIds.every(
+                id => previous.includes(id)
+            );
+
+            if (allSelected) {
+                return previous.filter(
+                    id => !currentPageIds.includes(id)
+                );
+            }
+
+            return [
+                ...new Set([
+                    ...previous,
+                    ...currentPageIds,
+                ]),
+            ];
+        });
+    }
+
     const formatSummary = (value) => {
         if (summaryLoading) return "...";
 
@@ -1440,10 +1537,53 @@ export default function AssetManagement({
                             </div>
                         )}
 
+                        <div className="asset-print-toolbar">
+                            <span>
+                                เลือกแล้ว {selectedPrintIds.length} รายการ
+                            </span>
+
+                            <div className="asset-print-toolbar-actions">
+                                <button
+                                    type="button"
+                                    className="secondary-button"
+                                    onClick={handleClearPrintSelection}
+                                    disabled={selectedPrintIds.length === 0}
+                                >
+                                    ล้างการเลือก
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="primary-button"
+                                    onClick={handlePrintSelected}
+                                    disabled={
+                                        loading || selectedPrintIds.length === 0
+                                    }
+                                >
+                                    <Printer size={16} />
+
+                                    พิมพ์ที่เลือก ({selectedPrintIds.length})
+                                </button>
+                            </div>
+                        </div>
+
                         <div className="table-scroll">
                             <table className="modern-table">
                                 <thead>
                                     <tr>
+                                        <th className="asset-print-select-cell">
+                                            <input
+                                                type="checkbox"
+                                                checked={allCurrentPageSelected}
+                                                onChange={handleToggleAllPrintAssets}
+                                                disabled={
+                                                    loading ||
+                                                    paginatedAssets.length === 0
+                                                }
+                                                aria-label="เลือกทรัพย์สินทั้งหมดในหน้านี้"
+                                                title="เลือกทั้งหมดในหน้านี้"
+                                            />
+                                        </th>
                                         <th>Asset Code</th>
                                         <th className="asset-preview-heading">รูปภาพ</th>
                                         <th>ชื่ออุปกรณ์</th>
@@ -1459,7 +1599,7 @@ export default function AssetManagement({
                                 <tbody>
                                     {loading ? (
                                         <tr>
-                                            <td colSpan={9}>
+                                            <td colSpan={10}>
                                                 <div className="empty-state">
                                                     กำลังโหลดข้อมูล Asset...
                                                 </div>
@@ -1475,6 +1615,15 @@ export default function AssetManagement({
 
                                                 return (
                                                     <tr key={asset.id}>
+                                                        <td className="asset-print-select-cell">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedPrintIds.includes(asset.id)}
+                                                                onChange={() => handleTogglePrintAsset(asset.id)}
+                                                                aria-label={`เลือก ${asset.asset_code}`}
+                                                            />
+                                                        </td>
+
                                                         <td>
                                                             <span className="ticket-number">
                                                                 {asset.asset_code}
@@ -1550,15 +1699,28 @@ export default function AssetManagement({
                                                         </td>
 
                                                         <td>
-                                                            <button
-                                                                type="button"
-                                                                className="secondary-button"
-                                                                onClick={() => handleViewAsset(asset.id)}
-                                                                title="ดูรายละเอียดทรัพย์สิน"
-                                                            >
-                                                                <Eye size={15} />
-                                                                ดูรายละเอียด
-                                                            </button>
+                                                            <div className="asset-table-actions">
+                                                                <button
+                                                                    type="button"
+                                                                    className="secondary-button"
+                                                                    onClick={() => handleViewAsset(asset.id)}
+                                                                    title="ดูรายละเอียดทรัพย์สิน"
+                                                                >
+                                                                    <Eye size={15} />
+                                                                    ดูรายละเอียด
+                                                                </button>
+
+                                                                <button
+                                                                    type="button"
+                                                                    className="secondary-button"
+                                                                    onClick={() => handlePrintSingle(asset)}
+                                                                    title="พิมพ์สติกเกอร์ทรัพย์สิน"
+                                                                    aria-label={`พิมพ์ ${asset.asset_code}`}
+                                                                >
+                                                                    <Printer size={15} />
+                                                                    พิมพ์
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 );
@@ -1566,7 +1728,7 @@ export default function AssetManagement({
 
                                             {assets.length === 0 && !error && (
                                                 <tr>
-                                                    <td colSpan={9}>
+                                                    <td colSpan={10}>
                                                         <div className="empty-state">
                                                             <div className="empty-icon">
                                                                 <Package size={27} />
@@ -3143,6 +3305,13 @@ export default function AssetManagement({
                                 </form>
                             </div>
                         </div>
+                    )}
+
+                    {showPrintModal && printAssets.length > 0 && (
+                        <AssetLabelPrintModal
+                            assets={printAssets}
+                            onClose={handleClosePrintModal}
+                        />
                     )}
 
                     <footer className="dashboard-footer">

@@ -1,0 +1,330 @@
+/* =========================
+   ASSET LABEL
+   ========================= */
+
+.osx-asset-label {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+
+    padding: 1mm;
+    overflow: hidden;
+
+    background: #ffffff;
+    color: #000000;
+
+    font-family: Arial, sans-serif;
+    font-size: var(--label-font-size);
+
+    flex-shrink: 0;
+    break-inside: avoid;
+
+    outline: 1px dashed #cbd5e1;
+}
+
+.osx-label-header {
+    font-size: var(--label-font-size);
+    font-weight: 700;
+    line-height: 1.15;
+
+    border-bottom: 0.2mm solid #000;
+    padding-bottom: 0.6mm;
+}
+
+.osx-label-body {
+    display: flex;
+    align-items: center;
+    gap: 0.8mm;
+
+    flex: 1;
+    min-height: 0;
+}
+
+.osx-label-qr {
+    width: var(--label-qr-size);
+    height: var(--label-qr-size);
+    flex-shrink: 0;
+}
+
+.osx-label-qr svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.osx-label-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3mm;
+
+    flex: 1;
+    min-width: 0;
+
+    line-height: 1.15;
+}
+
+.osx-label-code {
+    font-size: var(--label-font-size);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.osx-label-name,
+.osx-label-model {
+    font-size: calc(var(--label-font-size) * 0.85);
+
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+/* =========================
+   PRINT MODAL
+   ========================= */
+
+.osx-print-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+
+    background: rgba(15, 23, 42, 0.6);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 20px;
+}
+
+.osx-print-modal {
+    background: #fff;
+    color: #172033;
+
+    width: 900px;
+    max-width: 100%;
+    max-height: 90vh;
+
+    display: flex;
+    flex-direction: column;
+
+    border-radius: 16px;
+    overflow: auto;
+
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.osx-print-header,
+.osx-print-footer {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+    padding: 18px 22px;
+}
+
+.osx-print-header {
+    justify-content: space-between;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.osx-print-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.osx-print-settings {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    gap: 16px;
+    padding: 20px 22px;
+}
+
+.osx-print-settings > label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.osx-print-settings select,
+.osx-print-settings input[type="number"] {
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    width: 100%;
+}
+
+.osx-print-options {
+    grid-column: 1 / -1;
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.osx-print-options label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.osx-print-summary {
+    padding: 12px 22px;
+    background: #f1f5f9;
+
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.osx-print-preview {
+    background: #e2e8f0;
+    padding: 20px;
+    min-height: 180px;
+    overflow: auto;
+}
+
+.osx-print-footer {
+    justify-content: flex-end;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* =========================
+   PRINT LAYOUT
+   ========================= */
+
+.osx-label-print-root {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.osx-label-print-page {
+    display: grid;
+    justify-content: start;
+
+    width: max-content;
+    background: white;
+
+    break-inside: avoid;
+}
+
+.osx-label-print-root.mode-a4
+.osx-label-print-page {
+    box-sizing: border-box;
+
+    width: 190mm;
+    min-height: 277mm;
+
+    align-content: start;
+}
+
+.osx-label-print-root.mode-thermal {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+
+@media (max-width: 640px) {
+    .osx-print-settings {
+        grid-template-columns: 1fr;
+    }
+
+    .osx-print-overlay {
+        padding: 10px;
+    }
+}
+
+/* =========================
+   PRINT ONLY
+   ========================= */
+
+@media print {
+    .osx-label-print-root {
+        display: block !important;
+    }
+
+    .osx-label-print-page {
+        margin: 0 !important;
+        padding: 0 !important;
+
+        break-inside: avoid;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    .osx-label-print-page:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+    .osx-label-print-root.mode-a4
+    .osx-label-print-page {
+        min-height: 0;
+    }
+
+    .osx-asset-label {
+        outline: none;
+        margin: 0;
+
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+}
+
+/* Asset Management Print Toolbar */
+
+.asset-print-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    flex-wrap: wrap;
+    gap: 12px;
+
+    padding: 14px 0;
+
+    font-size: 14px;
+}
+
+.asset-print-toolbar-actions,
+.asset-table-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    gap: 8px;
+}
+
+.asset-print-select-cell {
+    width: 42px;
+    text-align: center;
+}
+
+.asset-print-select-cell input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+
+    cursor: pointer;
+    accent-color: #1758c8;
+}
+
+@media (max-width: 640px) {
+    .asset-print-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
