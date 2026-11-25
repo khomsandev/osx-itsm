@@ -20,6 +20,15 @@ export default function AssetLabel({
         asset.model,
     ].filter(Boolean).join(" ");
 
+    // ตรวจสอบประเภทการติดตามทรัพย์สิน
+    const isIndividual =
+        asset.tracking_type === "INDIVIDUAL";
+
+    // จัดการกรณี Serial Number เป็น NULL
+    const serialNumber = String(
+        asset.serial_number ?? ""
+    ).trim();
+
     return (
         <div
             className="osx-asset-label"
@@ -47,21 +56,33 @@ export default function AssetLabel({
                 </div>
 
                 <div className="osx-label-info">
+
+                    {/* Asset Code */}
                     <strong className="osx-label-code">
                         {asset.asset_code}
                     </strong>
 
+                    {/* Asset Name */}
                     {config.showAssetName && (
                         <span className="osx-label-name">
                             {asset.asset_name}
                         </span>
                     )}
 
+                    {/* Brand / Model */}
                     {config.showBrandModel && brandModel && (
                         <span className="osx-label-model">
                             {brandModel}
                         </span>
                     )}
+
+                    {/* Serial Number - INDIVIDUAL only */}
+                    {isIndividual && serialNumber && (
+                        <span className="osx-label-serial">
+                            S/N: {serialNumber}
+                        </span>
+                    )}
+
                 </div>
             </div>
         </div>

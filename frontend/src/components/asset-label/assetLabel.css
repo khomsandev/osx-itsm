@@ -81,6 +81,18 @@
     overflow-wrap: anywhere;
 }
 
+/* Serial Number - Individual Asset */
+.osx-label-serial {
+    font-size: calc(var(--label-font-size) * 0.8);
+    font-weight: 600;
+    line-height: 1.15;
+
+    color: #000000;
+
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 /* =========================
    PRINT MODAL
    ========================= */
