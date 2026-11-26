@@ -5,6 +5,7 @@ import {Package,Search,RefreshCw,AlertCircle,MapPin,Hash,Monitor,Boxes,Users,Wre
     Plus,X,Save,Eye,Pencil,UserPlus,RotateCcw,History,Upload,Printer,
 } from "lucide-react";
 
+import AssetLifecycle from "../components/asset-lifecycle/AssetLifecycle";
 import AssetLabelPrintModal from "../components/asset-label/AssetLabelPrintModal";
 import api from "../api/client";
 import AppSidebar from "../components/AppSidebar";
@@ -2892,7 +2893,7 @@ export default function AssetManagement({
                                                         </div>
                                                     )}
 
-                                                    <form onSubmit={handleStockTransaction} className="surface-card" style={{ padding: "18px", marginBottom: "20px" }}>
+                                                    {!["DISPOSED", "INACTIVE", "UNDER_REPAIR"].includes(selectedAsset.status) && <form onSubmit={handleStockTransaction} className="surface-card" style={{ padding: "18px", marginBottom: "20px" }}>
                                                         <h3 style={{ marginBottom: "16px" }}>ทำรายการ Stock</h3>
                                                         <div className="form-grid">
                                                             <label className="styled-field">
@@ -2994,7 +2995,7 @@ export default function AssetManagement({
                                                                 </button>
                                                             </div>
                                                         </div>
-                                                    </form>
+                                                    </form>}
 
                                                     <div className="surface-card" style={{ padding: "18px" }}>
                                                         <h3 style={{ marginBottom: "16px" }}>
@@ -3046,6 +3047,22 @@ export default function AssetManagement({
                                                     </div>
                                                 </div>
                                             )}
+                                            <AssetLifecycle
+                                                key={selectedAsset.id}
+                                                asset={selectedAsset}
+                                                user={user}
+                                                onRefresh={async (assetId) => {
+                                                    const response = await api.get(`/assets/${assetId}`);
+                                                    setSelectedAsset(response.data);
+                                                    await Promise.all([
+                                                        response.data.tracking_type === "INDIVIDUAL"
+                                                            ? loadAssignmentData(assetId)
+                                                            : loadStockData(assetId),
+                                                        loadAssets(), loadSummary(),
+                                                    ]);
+                                                }}
+                                            />
+
                                         </>
                                     )}
                                 </div>

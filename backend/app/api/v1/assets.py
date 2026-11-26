@@ -347,6 +347,76 @@ def get_asset_assignments(
 
     return assignments
 
+@router.get(
+    "/dashboard/summary",
+    response_model=AssetDashboardSummary,
+)
+def get_asset_dashboard_summary(db: DbSession):
+
+    total_assets = db.scalar(
+        select(func.count(Asset.id))
+    ) or 0
+
+    individual_assets = db.scalar(
+        select(func.count(Asset.id)).where(
+            Asset.tracking_type == "INDIVIDUAL",
+            Asset.status != "DISPOSED",
+        )
+    ) or 0
+
+    quantity_items = db.scalar(
+        select(func.count(Asset.id)).where(
+            Asset.tracking_type == "QUANTITY",
+            Asset.status != "DISPOSED",
+        )
+    ) or 0
+
+    assigned_assets = db.scalar(
+        select(func.count(Asset.id)).where(
+            Asset.status == "ASSIGNED"
+        )
+    ) or 0
+
+    under_repair = db.scalar(
+        select(func.count(Asset.id)).where(
+            Asset.status == "UNDER_REPAIR"
+        )
+    ) or 0
+
+    disposed_assets = db.scalar(
+        select(func.count(Asset.id)).where(
+            Asset.status == "DISPOSED"
+        )
+    ) or 0
+
+    low_stock_items = db.scalar(
+        select(func.count(Asset.id)).where(
+            Asset.tracking_type == "QUANTITY",
+            Asset.status == "AVAILABLE",
+            Asset.quantity_on_hand <= Asset.minimum_quantity,
+        )
+    ) or 0
+
+    total_stock_quantity = db.scalar(
+        select(func.coalesce(func.sum(Asset.quantity_on_hand), 0))
+        .where(
+            Asset.tracking_type == "QUANTITY",
+            Asset.status != "DISPOSED",
+        )
+    ) or 0
+
+    return AssetDashboardSummary(
+        total_assets=total_assets,
+        individual_assets=individual_assets,
+        quantity_items=quantity_items,
+        assigned_assets=assigned_assets,
+        under_repair=under_repair,
+        disposed_assets=disposed_assets,
+        low_stock_items=low_stock_items,
+        total_stock_quantity=total_stock_quantity,
+    )
+
+
 @router.get("/{asset_id}", response_model=AssetResponse)
 def get_asset(asset_id: int, db: DbSession):
     asset = db.get(Asset, asset_id)
@@ -364,7 +434,7 @@ def update_asset(
     db: DbSession,
     user: CurrentUser,
 ):
-    asset = db.get(Asset, asset_id)
+    asset = db.scalar(select(Asset).where(Asset.id == asset_id).with_for_update())
 
     if asset is None:
         raise HTTPException(404, "Asset not found")
@@ -373,6 +443,10 @@ def update_asset(
         raise HTTPException(400, "Disposed asset cannot be edited")
 
     data = payload.model_dump(exclude_unset=True)
+    if "status" in data:
+        if data["status"] != asset.status:
+            raise HTTPException(400, "Use lifecycle actions to change asset status")
+        data.pop("status")
 
     if "category_id" in data:
         category = db.get(AssetCategory, data["category_id"])
@@ -453,7 +527,7 @@ def create_stock_transaction(
         )
 
     # ตรวจสอบสถานะ Asset
-    if asset.status in ("DISPOSED", "INACTIVE"):
+    if asset.status in ("DISPOSED", "INACTIVE", "UNDER_REPAIR"):
         raise HTTPException(
             status_code=400,
             detail="This stock item is inactive"
@@ -569,151 +643,6 @@ def create_stock_transaction(
     }
 
 @router.post(
-    "/{asset_id}/assign",
-    response_model=AssetAssignmentResponse,
-    status_code=201,
-)
-def assign_asset(
-    asset_id: int,
-    payload: AssetAssignmentCreate,
-    db: DbSession,
-    user: CurrentUser,
-):
-    asset = db.scalar(
-        select(Asset)
-        .where(Asset.id == asset_id)
-        .with_for_update()
-    )
-
-    if asset is None:
-        raise HTTPException(404, "Asset not found")
-
-    if asset.tracking_type != "INDIVIDUAL":
-        raise HTTPException(
-            400, "Only individual assets can be assigned"
-        )
-
-    if asset.status != "AVAILABLE":
-        raise HTTPException(
-            400, f"Asset is not available. Current status: {asset.status}"
-        )
-
-    employee = db.get(User, payload.assigned_to)
-
-    if employee is None or not employee.is_active:
-        raise HTTPException(404, "Active employee not found")
-
-    active_assignment = db.scalar(
-        select(AssetAssignment).where(
-            AssetAssignment.asset_id == asset_id,
-            AssetAssignment.returned_at.is_(None),
-        )
-    )
-
-    if active_assignment:
-        raise HTTPException(
-            409, "Asset already has an active assignment"
-        )
-
-    assignment = AssetAssignment(
-        asset_id=asset.id,
-        assigned_to=employee.id,
-        assigned_by=user.id,
-        note=payload.note,
-    )
-
-    asset.status = "ASSIGNED"
-    asset.updated_by = user.id
-
-    try:
-        db.add(assignment)
-        db.commit()
-        db.refresh(assignment)
-        return assignment
-
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            409, "Asset already has an active assignment"
-        )
-
-
-@router.post(
-    "/{asset_id}/return",
-    response_model=AssetAssignmentResponse,
-)
-def return_asset(
-    asset_id: int,
-    payload: AssetReturnCreate,
-    db: DbSession,
-    user: CurrentUser,
-):
-    asset = db.scalar(
-        select(Asset)
-        .where(Asset.id == asset_id)
-        .with_for_update()
-    )
-
-    if asset is None:
-        raise HTTPException(404, "Asset not found")
-
-    if asset.tracking_type != "INDIVIDUAL":
-        raise HTTPException(
-            400, "Only individual assets can be returned"
-        )
-
-    assignment = db.scalar(
-        select(AssetAssignment)
-        .where(
-            AssetAssignment.asset_id == asset_id,
-            AssetAssignment.returned_at.is_(None),
-        )
-        .with_for_update()
-    )
-
-    if assignment is None:
-        raise HTTPException(
-            404, "No active assignment found for this asset"
-        )
-
-    assignment.returned_at = datetime.now(timezone.utc)
-    assignment.returned_by = user.id
-
-    if payload.note:
-        assignment.note = (
-            f"{assignment.note or ''}\nReturn: {payload.note}"
-        ).strip()
-
-    asset.status = "AVAILABLE"
-    asset.updated_by = user.id
-
-    db.commit()
-    db.refresh(assignment)
-
-    return assignment
-
-
-@router.get(
-    "/{asset_id}/assignments",
-    response_model=list[AssetAssignmentResponse],
-)
-def get_asset_assignments(
-    asset_id: int,
-    db: DbSession,
-):
-    asset = db.get(Asset, asset_id)
-
-    if asset is None:
-        raise HTTPException(404, "Asset not found")
-
-    return db.scalars(
-        select(AssetAssignment)
-        .where(AssetAssignment.asset_id == asset_id)
-        .order_by(AssetAssignment.assigned_at.desc())
-    ).all()
-
-
-@router.post(
     "/{asset_id}/transfers",
     response_model=AssetTransferResponse,
     status_code=201,
@@ -733,7 +662,7 @@ def transfer_asset(
     if asset is None:
         raise HTTPException(404, "Asset not found")
 
-    if asset.status in ("DISPOSED", "INACTIVE"):
+    if asset.status in ("DISPOSED", "INACTIVE", "UNDER_REPAIR"):
         raise HTTPException(400, "This asset cannot be transferred")
 
     new_location = payload.to_location.strip()
@@ -809,10 +738,17 @@ def create_asset_maintenance(
     if asset is None:
         raise HTTPException(404, "Asset not found")
 
-    if asset.status in ("DISPOSED", "INACTIVE"):
-        raise HTTPException(
-            400, "This asset cannot be maintained"
-        )
+    if asset.tracking_type != "INDIVIDUAL":
+        raise HTTPException(400, "Only individual assets can be repaired")
+    if asset.status not in ("AVAILABLE", "ASSIGNED", "IN_USE"):
+        raise HTTPException(400, "This asset cannot be maintained")
+    if not payload.description.strip():
+        raise HTTPException(400, "Repair description is required")
+    if db.scalar(select(AssetMaintenance.id).where(
+        AssetMaintenance.asset_id == asset_id,
+        AssetMaintenance.completed_at.is_(None),
+    ).limit(1)) is not None:
+        raise HTTPException(409, "An open maintenance record already exists")
 
     maintenance = AssetMaintenance(
         asset_id=asset.id,
@@ -893,7 +829,16 @@ def complete_asset_maintenance(
             400, "Asset is not currently under repair"
         )
 
+    if asset.tracking_type != "INDIVIDUAL":
+        raise HTTPException(400, "Only individual assets can complete repair")
+    if db.scalar(select(AssetMaintenance.id).where(
+        AssetMaintenance.asset_id == asset_id,
+        AssetMaintenance.id != maintenance_id,
+        AssetMaintenance.completed_at.is_(None),
+    ).limit(1)) is not None:
+        raise HTTPException(409, "Multiple open maintenance records; reconcile before completion")
     maintenance.completed_at = datetime.now(timezone.utc)
+    maintenance.note = (maintenance.note or "") + f"\nCompleted by user #{user.id}"
 
     # หากมีผู้ครอบครองอยู่ ให้กลับเป็น ASSIGNED
     active_assignment = db.scalar(
@@ -1007,29 +952,41 @@ def dispose_asset(
     if asset is None:
         raise HTTPException(404, "Asset not found")
 
-    if asset.status == "DISPOSED":
-        raise HTTPException(400, "Asset already disposed")
+    reason = payload.disposal_note.strip()
+    if len(reason) < 3:
+        raise HTTPException(400, "Disposal reason is required")
+    if asset.status not in ("AVAILABLE", "INACTIVE", "UNDER_REPAIR"):
+        raise HTTPException(400, "Return assigned assets before disposal")
+    if asset.tracking_type == "QUANTITY" and (
+        asset.quantity_on_hand != 0 or asset.status == "UNDER_REPAIR"
+    ):
+        raise HTTPException(400, "Stock must be zero before disposal")
 
-    if asset.status == "ASSIGNED":
-        raise HTTPException(
-            400, "Please return the assigned asset before disposal"
-        )
-
+    assignment = db.scalar(select(AssetAssignment).where(
+        AssetAssignment.asset_id == asset_id,
+        AssetAssignment.returned_at.is_(None),
+    ).with_for_update())
+    repairs = db.scalars(select(AssetMaintenance).where(
+        AssetMaintenance.asset_id == asset_id,
+        AssetMaintenance.completed_at.is_(None),
+    ).with_for_update()).all()
     if asset.status == "UNDER_REPAIR":
-        raise HTTPException(
-            400, "Please complete maintenance before disposal"
-        )
-
-    if asset.tracking_type == "QUANTITY" and asset.quantity_on_hand > 0:
-        raise HTTPException(
-            400,
-            "Stock quantity must be zero before disposal"
-        )
+        if asset.tracking_type != "INDIVIDUAL" or len(repairs) != 1:
+            raise HTTPException(409, "Reconcile open maintenance records before disposal")
+        now = datetime.now(timezone.utc)
+        repairs[0].completed_at = now
+        repairs[0].note = (repairs[0].note or "") + f"\nDISPOSED by user #{user.id}: {reason}"
+        if assignment:
+            assignment.returned_at = now
+            assignment.returned_by = user.id
+            assignment.note = (assignment.note or "") + f"\nClosed by disposal: {reason}"
+    elif assignment or repairs:
+        raise HTTPException(409, "Open assignment or maintenance must be reconciled")
 
     asset.status = "DISPOSED"
     asset.disposed_at = datetime.now(timezone.utc)
     asset.disposed_by = user.id
-    asset.disposal_note = payload.disposal_note
+    asset.disposal_note = reason
     asset.updated_by = user.id
 
     db.commit()
@@ -1073,76 +1030,6 @@ def delete_asset(
             409,
             "Cannot permanently delete this asset because it has transaction history or related records. Use disposal instead."
         )
-
-@router.get(
-    "/dashboard/summary",
-    response_model=AssetDashboardSummary,
-)
-def get_asset_dashboard_summary(db: DbSession):
-
-    total_assets = db.scalar(
-        select(func.count(Asset.id))
-    ) or 0
-
-    individual_assets = db.scalar(
-        select(func.count(Asset.id)).where(
-            Asset.tracking_type == "INDIVIDUAL",
-            Asset.status != "DISPOSED",
-        )
-    ) or 0
-
-    quantity_items = db.scalar(
-        select(func.count(Asset.id)).where(
-            Asset.tracking_type == "QUANTITY",
-            Asset.status != "DISPOSED",
-        )
-    ) or 0
-
-    assigned_assets = db.scalar(
-        select(func.count(Asset.id)).where(
-            Asset.status == "ASSIGNED"
-        )
-    ) or 0
-
-    under_repair = db.scalar(
-        select(func.count(Asset.id)).where(
-            Asset.status == "UNDER_REPAIR"
-        )
-    ) or 0
-
-    disposed_assets = db.scalar(
-        select(func.count(Asset.id)).where(
-            Asset.status == "DISPOSED"
-        )
-    ) or 0
-
-    low_stock_items = db.scalar(
-        select(func.count(Asset.id)).where(
-            Asset.tracking_type == "QUANTITY",
-            Asset.status == "AVAILABLE",
-            Asset.quantity_on_hand <= Asset.minimum_quantity,
-        )
-    ) or 0
-
-    total_stock_quantity = db.scalar(
-        select(func.coalesce(func.sum(Asset.quantity_on_hand), 0))
-        .where(
-            Asset.tracking_type == "QUANTITY",
-            Asset.status != "DISPOSED",
-        )
-    ) or 0
-
-    return AssetDashboardSummary(
-        total_assets=total_assets,
-        individual_assets=individual_assets,
-        quantity_items=quantity_items,
-        assigned_assets=assigned_assets,
-        under_repair=under_repair,
-        disposed_assets=disposed_assets,
-        low_stock_items=low_stock_items,
-        total_stock_quantity=total_stock_quantity,
-    )
-
 
 @router.post("/{asset_id}/image")
 def upload_asset_image(

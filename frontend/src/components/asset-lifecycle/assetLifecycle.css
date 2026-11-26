@@ -1,0 +1,49 @@
+/* Scoped to Asset Lifecycle; uses the existing ITSM design tokens. */
+.asset-life { margin-top:24px; min-width:0; border:1px solid var(--border,#e4eaf3); border-radius:15px; background:#f8faff; overflow:hidden; color:var(--navy,#10284f); }
+.asset-life-header { display:flex; align-items:center; gap:12px; padding:20px 22px; background:#fff; border-bottom:1px solid var(--border,#e4eaf3); flex-wrap:wrap; }
+.asset-life-heading { flex:1; min-width:140px; }
+.asset-life-kicker { display:block; color:var(--red,#e44752); font-size:10px; font-weight:800; letter-spacing:.13em; margin-bottom:4px; }
+.asset-life-heading h2 { font-size:16px; font-weight:800; margin:0; }
+.asset-life-heading p,.asset-life-card-heading p { margin:4px 0 0; font-size:11px; color:#687a93; }
+.asset-life-content { display:grid; gap:14px; padding:16px; }
+.asset-life-card { min-width:0; padding:18px; border:1px solid var(--border,#e4eaf3); border-radius:13px; background:#fff; box-shadow:0 5px 18px #1b3d6b06; }
+.asset-life-card-heading { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+.asset-life-card-heading h3 { margin:0; font-size:13px; font-weight:800; }
+.asset-life-icon { width:34px; height:34px; border-radius:10px; flex:none; display:grid; place-items:center; color:var(--blue,#1758c8); background:#edf4ff; }
+.asset-life-badge,.asset-life-count { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:7px; background:#edf2fa; color:#465c7e; font-size:11px; font-weight:700; white-space:nowrap; }
+.asset-life-badge::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.asset-life-badge[data-status="AVAILABLE"],.asset-life-badge[data-status="CLOSED"] { background:#e9f8ef; color:#24734c; }
+.asset-life-badge[data-status="ASSIGNED"],.asset-life-badge[data-status="IN_USE"] { background:#edf4ff; color:#1758c8; }
+.asset-life-badge[data-status="UNDER_REPAIR"] { background:#fff4dc; color:#87560b; }
+.asset-life-badge[data-status="DISPOSED"] { background:#fff0f1; color:#b82735; }
+.asset-life-count { margin-left:auto; }
+.asset-life-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; flex-wrap:wrap; }
+.asset-life .form-grid { gap:14px; }
+.asset-life .styled-field textarea { min-height:60px; }
+.asset-life-notice { display:flex; align-items:center; gap:9px; padding:12px; background:#edf4ff; border-radius:9px; color:#365985; font-size:11px; line-height:1.6; margin-bottom:14px; }
+.asset-life > .asset-life-notice { margin:16px 16px 0; }
+.asset-life-notice svg { flex:none; }
+.asset-life-notice button { margin-left:auto; }
+.asset-life-repair { border-color:#eddcb8; }
+.asset-life-repair .asset-life-icon { color:#87560b; background:#fff4dc; }
+.asset-life-danger { border-color:#f0d5d8; }
+.asset-life-danger .asset-life-icon { background:#fff0f1; color:#c92f3b; }
+.asset-life-danger .asset-life-notice { background:#fff5f5; color:#a13340; }
+.asset-life .asset-life-dispose-button { color:#b82735; border-color:#efc5ca; background:#fff; }
+.asset-life .asset-life-dispose-button:hover:not(:disabled) { background:#fff0f1; border-color:#d73c48; color:#b82735; }
+.asset-life button:disabled { opacity:.55; cursor:not-allowed; }
+.asset-life-text { font-size:12px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; margin:8px 0; color:#354761; }
+.asset-life-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:12px 0; padding:10px 12px; border-radius:9px; background:#f4f7fc; }
+.asset-life-meta dt { color:#687a93; font-size:10px; }
+.asset-life-meta dd { margin:4px 0 0; color:#253b5b; font-size:12px; font-weight:700; overflow-wrap:anywhere; }
+.asset-life-empty { display:flex; flex-direction:column; align-items:center; gap:9px; padding:25px 10px; border:1px dashed #dce4f0; border-radius:10px; color:#687a93; font-size:12px; }
+.asset-life-timeline { list-style:none; margin:0; padding:0; }
+.asset-life-event { position:relative; display:grid; grid-template-columns:28px minmax(0,1fr); gap:10px; padding-bottom:14px; }
+.asset-life-event:not(:last-child)::before { content:""; position:absolute; left:13px; top:27px; bottom:0; border-left:1px solid #dce4f0; }
+.asset-life-event:last-child { padding-bottom:0; }
+.asset-life-event-icon { width:28px; height:28px; display:grid; place-items:center; background:#fff4dc; color:#87560b; border-radius:50%; }
+.asset-life-event-icon[data-complete="true"] { background:#e9f8ef; color:#24734c; }
+.asset-life-event-body { border:1px solid var(--border,#e4eaf3); border-radius:10px; padding:12px; min-width:0; }
+.asset-life-event-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:12px; }
+.asset-life-event-date { display:flex; align-items:center; gap:5px; color:#687a93; font-size:11px; margin:7px 0; }
+@media (max-width:640px) { .asset-life-header { padding:16px; } .asset-life-content { padding:10px; } .asset-life-card { padding:13px; } .asset-life .form-grid,.asset-life-meta { grid-template-columns:1fr; } .asset-life-actions button { width:100%; white-space:normal; } .asset-life-notice { flex-wrap:wrap; } }

@@ -67,6 +67,9 @@ class AssetResponse(BaseModel):
     warranty_expiry: date | None = None
     status: str
     created_at: datetime
+    disposed_at: datetime | None = None
+    disposed_by: int | None = None
+    disposal_note: str | None = None
 
 class StockTransactionCreate(BaseModel):
     transaction_type: Literal["RECEIVE", "ISSUE"]
