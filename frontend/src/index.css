@@ -1209,3 +1209,53 @@ button:disabled { cursor: not-allowed; }
     color: #94a3b8;
     background: #f8fafc;
 }
+
+/* Asset detail only: matches the existing OSX ITSM / Asset Lifecycle theme. */
+.osx-detail-overlay { padding:24px; }
+.modal-content.admin-form-card.osx-detail-modal { width:min(1080px,100%); max-width:1080px; padding:0; background:#f4f7fc; color:var(--navy,#10284f); }
+.osx-detail-modal .osx-detail-header { position:sticky; top:0; z-index:110; margin:0; padding:18px 24px; background:#fff; border-bottom:1px solid var(--border,#e4eaf3); box-shadow:0 4px 14px #10284f08; }
+.osx-detail-header .section-heading-icon { width:44px; height:44px; }
+.osx-detail-modal .osx-detail-header h2 { font-size:18px; }
+.osx-detail-kicker { display:block; font-size:10px; font-weight:800; letter-spacing:.11em; color:var(--red,#e44752); margin-bottom:4px; }
+.osx-detail-body { padding:20px 24px 26px; min-width:0; }
+.osx-detail-hero { display:flex; align-items:center; flex-wrap:wrap; gap:14px; border:1px solid #dce7f8; border-radius:14px; background:linear-gradient(115deg,#fff,#edf4ff); padding:18px; margin-bottom:16px; }
+.osx-detail-hero-icon { display:grid; place-items:center; width:52px; height:52px; flex:none; background:var(--blue,#1758c8); color:white; border-radius:13px; box-shadow:0 5px 14px #1758c82b; }
+.osx-detail-identity { flex:1; min-width:120px; overflow-wrap:anywhere; }
+.osx-detail-identity h3 { margin:0; font-size:19px; line-height:1.4; font-weight:800; }
+.osx-detail-identity p { margin:4px 0 0; font-size:12px; color:#687a93; }
+.osx-detail-overview { display:grid; grid-template-columns:minmax(0, 2fr) minmax(0, 3fr); align-items:start; gap:16px; }
+.osx-detail-card { min-width:0; padding:18px; border:1px solid var(--border,#e4eaf3); border-radius:13px; background:#fff; box-shadow:0 5px 18px #1b3d6b06; }
+.osx-detail-card-heading { display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+.osx-detail-card-heading h3 { font-size:14px; font-weight:800; margin:0; }
+.osx-detail-card-heading p { font-size:11px; color:#687a93; margin:4px 0 0; }
+.osx-detail-icon { display:grid; place-items:center; width:35px; height:35px; border-radius:10px; flex:none; color:var(--blue,#1758c8); background:#edf4ff; }
+.osx-detail-photo { position:relative; display:grid; place-items:center; min-height:230px; padding:14px; border:1px solid #dfe7f2; border-radius:12px; background:#f8faff; margin-bottom:16px; }
+.osx-detail-photo img { display:block; width:100%; max-height:300px; object-fit:contain; border-radius:8px; }
+.osx-detail-photo-empty { display:grid; justify-items:center; gap:8px; color:#75839a; font-size:12px; text-align:center; }
+.osx-detail-photo-empty p { margin:0; }
+.osx-detail-preview-tag { position:absolute; top:9px; left:9px; border-radius:6px; padding:5px 8px; background:#fff4dc; color:#87560b; font-size:10px; font-weight:700; }
+.osx-detail-file input[type=file] { padding:8px; border-style:dashed; }
+.osx-detail-file input::file-selector-button { border:0; border-radius:6px; background:#edf4ff; color:var(--blue,#1758c8); padding:7px 10px; margin-right:7px; font:inherit; font-weight:700; cursor:pointer; }
+.osx-detail-file-name,.osx-detail-hint { display:block; color:#687a93; font-size:11px; line-height:1.6; margin:10px 0 0; overflow-wrap:anywhere; }
+.osx-detail-data-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.osx-detail-datum { min-width:0; background:#f8faff; border:1px solid #e9eef6; border-radius:9px; padding:10px 12px; }
+.osx-detail-datum > span { display:block; color:#687a93; font-size:10px; margin-bottom:5px; }
+.osx-detail-datum > strong { display:block; font-size:12px; line-height:1.6; color:#253b5b; font-weight:600; white-space:pre-wrap; overflow-wrap:anywhere; }
+.osx-detail-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; margin-top:16px; }
+.osx-detail-section { min-width:0; margin-top:24px; border:1px solid var(--border,#e4eaf3); border-radius:15px; background:#f8faff; padding:16px; }
+.osx-detail-modal .osx-detail-section-heading { margin:-16px -16px 16px; padding:18px 20px; border-radius:15px 15px 0 0; background:#fff; }
+.osx-detail-modal .osx-detail-section-heading h2 { font-size:15px; }
+.osx-detail-action-card { margin-bottom:14px; }
+.osx-detail-modal .osx-detail-card .form-grid { padding:0; gap:14px; }
+.osx-detail-modal .osx-detail-card .form-actions { justify-content:flex-end; }
+.osx-detail-modal .osx-detail-card .styled-field { font-size:12px; }
+.osx-detail-modal .osx-detail-card .styled-field input,.osx-detail-modal .osx-detail-card .styled-field textarea,.osx-detail-modal .osx-detail-card .styled-field select { font-size:12px; }
+.osx-detail-count { margin-left:auto; border-radius:7px; background:#edf4ff; color:var(--blue,#1758c8); padding:5px 9px; font-size:11px; font-weight:700; }
+.osx-detail-history .table-scroll { border:1px solid #e4eaf3; border-radius:10px; overflow-x:auto; }
+.osx-detail-history .modern-table { min-width:760px; }
+.osx-detail-history .modern-table td { vertical-align:top; }
+.osx-detail-history .modern-table td:last-child { white-space:normal; overflow-wrap:anywhere; min-width:140px; }
+.osx-detail-history .empty-state { display:grid; justify-items:center; gap:10px; padding:26px 12px; color:#687a93; border:1px dashed #dce4f0; border-radius:10px; }
+.osx-detail-user-option:hover,.osx-detail-user-option:focus-visible { background:#edf4ff !important; }
+@media(max-width:850px) { .osx-detail-overview { grid-template-columns:1fr; } }
+@media(max-width:640px) { .osx-detail-overlay { padding:10px; } .osx-detail-modal .osx-detail-header { padding:14px; flex-wrap:nowrap; } .osx-detail-modal .osx-detail-header h2 { font-size:15px; } .osx-detail-body { padding:12px; } .osx-detail-section { padding:10px; } .osx-detail-modal .osx-detail-section-heading { margin:-10px -10px 12px; padding:14px; } .osx-detail-card { padding:13px; } .osx-detail-data-grid { grid-template-columns:1fr; } .osx-detail-actions button { flex:1 1 auto; } .osx-detail-identity h3 { font-size:16px; } }

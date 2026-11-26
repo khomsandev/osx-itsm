@@ -2158,22 +2158,23 @@ export default function AssetManagement({
                     {/* Asset Detail Modal */}
                     {showDetail && (
                         <div 
-                            className="modal-overlay" 
+                            className="modal-overlay osx-detail-overlay" 
                             onClick={(e) => {
                                 if (e.target === e.currentTarget) {
                                     handleCloseDetail();
                                 }
                             }}
                         >
-                            <div className="surface-card modal-content admin-form-card">
+                            <div className="surface-card modal-content admin-form-card osx-detail-modal" role="dialog" aria-modal="true" aria-labelledby="osx-detail-title">
 
-                                <div className="section-heading">
+                                <div className="section-heading osx-detail-header">
                                     <div className="section-heading-icon">
                                         <Package size={19} />
                                     </div>
 
                                     <div>
-                                        <h2>รายละเอียดทรัพย์สิน IT</h2>
+                                        <span className="osx-detail-kicker">IT ASSET MANAGEMENT</span>
+                                        <h2 id="osx-detail-title">รายละเอียดทรัพย์สิน IT</h2>
                                         <p>Asset Detail</p>
                                     </div>
 
@@ -2188,7 +2189,7 @@ export default function AssetManagement({
                                     </button>
                                 </div>
 
-                                <div style={{ padding: "22px" }}>
+                                <div className="osx-detail-body">
 
                                     {detailLoading && (
                                         <div className="empty-state">
@@ -2205,234 +2206,127 @@ export default function AssetManagement({
 
                                     {selectedAsset && !detailLoading && (
                                         <>
-                                            {/* Asset Image */}
-                                            <div
-                                                className="full-field"
-                                                style={{
-                                                    marginBottom: "24px",
-                                                    padding: "18px",
-                                                    border: "1px solid #e2e8f0",
-                                                    borderRadius: "12px",
-                                                    background: "#f8fafc",
-                                                }}
-                                            >
-                                                <h3 style={{ marginBottom: "14px" }}>
-                                                    รูปภาพอุปกรณ์
-                                                </h3>
-
-                                                <div
-                                                    style={{
-                                                        width: "100%",
-                                                        minHeight: "220px",
-                                                        display: "flex",
-                                                        justifyContent: "center",
-                                                        alignItems: "center",
-                                                        background: "#ffffff",
-                                                        border: "1px dashed #cbd5e1",
-                                                        borderRadius: "10px",
-                                                        overflow: "hidden",
-                                                        marginBottom: "16px",
-                                                    }}
-                                                >
-                                                    {(imagePreview || selectedAsset.image_path) ? (
-                                                        <img
-                                                            src={
-                                                                imagePreview ||
-                                                                `${API_ORIGIN}/${selectedAsset.image_path.replace(/^\/+/, "")}`
-                                                            }
-                                                            alt={selectedAsset.asset_name}
-                                                            style={{
-                                                                maxWidth: "100%",
-                                                                maxHeight: "350px",
-                                                                objectFit: "contain",
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <div
-                                                            style={{
-                                                                textAlign: "center",
-                                                                color: "#94a3b8",
-                                                                padding: "30px",
-                                                            }}
-                                                        >
-                                                            <Package size={48} />
-                                                            <p>ยังไม่มีรูปภาพอุปกรณ์</p>
-                                                        </div>
-                                                    )}
+                                            {/* Asset overview */}
+                                            <div className="osx-detail-hero">
+                                                <div className="osx-detail-hero-icon"><Monitor size={25} /></div>
+                                                <div className="osx-detail-identity">
+                                                    <span className="osx-detail-kicker">{selectedAsset.asset_code || "-"}</span>
+                                                    <h3>{selectedAsset.asset_name || "-"}</h3>
+                                                    <p>{[selectedAsset.brand, selectedAsset.model].filter(Boolean).join(" ") || "-"} · {selectedAsset.tracking_type}</p>
                                                 </div>
-
-                                                <label className="styled-field">
+                                                <span className={`status-pill ${STATUS_CLASSES[selectedAsset.status] || "status-closed"}`}><span />{STATUS_LABELS[selectedAsset.status] || selectedAsset.status}</span>
+                                            </div>
+                                            <div className="osx-detail-overview">
+                                            {/* Asset Image */}
+                                            <section className="osx-detail-card osx-detail-image">
+                                                <div className="osx-detail-card-heading">
+                                                    <span className="osx-detail-icon"><Monitor size={18} /></span>
+                                                    <div><h3>รูปภาพอุปกรณ์</h3><p>Equipment photo</p></div>
+                                                </div>
+                                                <div className="osx-detail-photo">
+                                                    {(imagePreview || selectedAsset.image_path) ? (
+                                                        <img src={imagePreview || getAssetImageUrl(selectedAsset.image_path)} alt={selectedAsset.asset_name} />
+                                                    ) : (
+                                                        <div className="osx-detail-photo-empty"><Package size={40} /><p>ยังไม่มีรูปภาพอุปกรณ์</p></div>
+                                                    )}
+                                                    {imagePreview && <span className="osx-detail-preview-tag">ตัวอย่างก่อนบันทึก</span>}
+                                                </div>
+                                                <label className="styled-field osx-detail-file">
                                                     <span>เลือกรูปภาพ (JPG, PNG, WEBP)</span>
-
-                                                    <input
-                                                        type="file"
-                                                        accept="image/jpeg,image/png,image/webp"
-                                                        onChange={handleSelectAssetImage}
-                                                        disabled={imageUploading}
-                                                    />
+                                                    <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleSelectAssetImage} disabled={imageUploading} />
                                                 </label>
-
-                                                {imageFile && (
-                                                    <p style={{
-                                                        fontSize: "13px",
-                                                        color: "#64748b",
-                                                        marginTop: "8px",
-                                                    }}>
-                                                        ไฟล์ที่เลือก: {imageFile.name}
-                                                    </p>
-                                                )}
-
-                                                {imageUploadError && (
-                                                    <div className="error-banner" style={{ marginTop: "12px" }}>
-                                                        <AlertCircle size={17} />
-                                                        {imageUploadError}
-                                                    </div>
-                                                )}
-
-                                                {imageUploadSuccess && (
-                                                    <div className="success-banner" style={{ marginTop: "12px" }}>
-                                                        <Package size={17} />
-                                                        {imageUploadSuccess}
-                                                    </div>
-                                                )}
-
-                                                <div className="form-actions" style={{ marginTop: "14px" }}>
-                                                    <button
-                                                        type="button"
-                                                        className="primary-button"
-                                                        onClick={handleUploadAssetImage}
-                                                        disabled={!imageFile || imageUploading}
-                                                    >
-                                                        <Upload size={16} />
-                                                        {imageUploading
-                                                            ? "กำลัง Upload..."
-                                                            : selectedAsset.image_path
-                                                                ? "เปลี่ยนรูปภาพ"
-                                                                : "Upload รูปภาพ"}
+                                                {imageFile && <p className="osx-detail-file-name">ไฟล์ที่เลือก: {imageFile.name}</p>}
+                                                {imageUploadError && <div className="error-banner"><AlertCircle size={17} />{imageUploadError}</div>}
+                                                {imageUploadSuccess && <div className="success-banner"><Package size={17} />{imageUploadSuccess}</div>}
+                                                <div className="osx-detail-actions">
+                                                    {imageFile && <button type="button" className="secondary-button" disabled={imageUploading} onClick={() => { setImageFile(null); setImagePreview(""); }}><X size={15} /> ยกเลิกรูปที่เลือก</button>}
+                                                    <button type="button" className="primary-button" onClick={handleUploadAssetImage} disabled={!imageFile || imageUploading}>
+                                                        <Upload size={16} />{imageUploading ? "กำลัง Upload..." : selectedAsset.image_path ? "เปลี่ยนรูปภาพ" : "Upload รูปภาพ"}
                                                     </button>
                                                 </div>
+                                                <small className="osx-detail-hint">รองรับ JPG, PNG, WEBP ไม่เกิน 5 MB · 1 รูปต่อ Asset</small>
+                                            </section>
+                                            <section className="osx-detail-card osx-detail-info">
+                                                <div className="osx-detail-card-heading"><span className="osx-detail-icon"><Package size={18} /></span><div><h3>ข้อมูลทรัพย์สิน</h3><p>Asset information</p></div></div>
+                                            <div className="osx-detail-data-grid">
 
-                                                <small style={{ color: "#64748b" }}>
-                                                    รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 5 MB
-                                                    และจัดเก็บได้ 1 รูปต่อ Asset
-                                                </small>
-                                            </div>
-                                            <div className="form-grid">
-
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>Asset Code</span>
-                                                    <input
-                                                        value={selectedAsset.asset_code || "-"}
-                                                        disabled
-                                                    />
-                                                </label>
+                                                    <strong>{selectedAsset.asset_code || "-"}</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>ชื่ออุปกรณ์</span>
-                                                    <input
-                                                        value={selectedAsset.asset_name || "-"}
-                                                        disabled
-                                                    />
-                                                </label>
+                                                    <strong>{selectedAsset.asset_name || "-"}</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>หมวดหมู่</span>
-                                                    <input
-                                                        value={
+                                                    <strong>{
                                                             categoryMap[selectedAsset.category_id] ||
                                                             `Category #${selectedAsset.category_id}`
-                                                        }
-                                                        disabled
-                                                    />
-                                                </label>
+                                                        }</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>ประเภทการจัดการ</span>
-                                                    <input
-                                                        value={selectedAsset.tracking_type}
-                                                        disabled
-                                                    />
-                                                </label>
+                                                    <strong>{selectedAsset.tracking_type}</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>ยี่ห้อ</span>
-                                                    <input
-                                                        value={selectedAsset.brand || "-"}
-                                                        disabled
-                                                    />
-                                                </label>
+                                                    <strong>{selectedAsset.brand || "-"}</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>รุ่น</span>
-                                                    <input
-                                                        value={selectedAsset.model || "-"}
-                                                        disabled
-                                                    />
-                                                </label>
+                                                    <strong>{selectedAsset.model || "-"}</strong>
+                                                </div>
 
-                                                <label className="styled-field full-field">
+                                                <div className="osx-detail-datum full-field">
                                                     <span>Serial Number</span>
-                                                    <input
-                                                        value={selectedAsset.serial_number || "-"}
-                                                        disabled
-                                                    />
-                                                </label>
+                                                    <strong>{selectedAsset.serial_number || "-"}</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>สถานที่</span>
-                                                    <input
-                                                        value={selectedAsset.location || "-"}
-                                                        disabled
-                                                    />
-                                                </label>
+                                                    <strong>{selectedAsset.location || "-"}</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>สถานะ</span>
-                                                    <input
-                                                        value={
+                                                    <strong>{
                                                             STATUS_LABELS[selectedAsset.status] ||
                                                             selectedAsset.status
-                                                        }
-                                                        disabled
-                                                    />
-                                                </label>
+                                                        }</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>จำนวนคงเหลือ</span>
-                                                    <input
-                                                        value={
+                                                    <strong>{
                                                             selectedAsset.tracking_type === "QUANTITY"
                                                                 ? selectedAsset.quantity_on_hand
                                                                 : "-"
-                                                        }
-                                                        disabled
-                                                    />
-                                                </label>
+                                                        }</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>จำนวนขั้นต่ำ</span>
-                                                    <input
-                                                        value={
+                                                    <strong>{
                                                             selectedAsset.tracking_type === "QUANTITY"
                                                                 ? selectedAsset.minimum_quantity
                                                                 : "-"
-                                                        }
-                                                        disabled
-                                                    />
-                                                </label>
+                                                        }</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>วันที่ซื้อ</span>
-                                                    <input
-                                                        value={selectedAsset.purchase_date || "-"}
-                                                        disabled
-                                                    />
-                                                </label>
+                                                    <strong>{selectedAsset.purchase_date || "-"}</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>ราคาซื้อ</span>
-                                                    <input
-                                                        value={
+                                                    <strong>{
                                                             selectedAsset.purchase_price != null
                                                                 ? Number(
                                                                     selectedAsset.purchase_price
@@ -2441,45 +2335,33 @@ export default function AssetManagement({
                                                                     maximumFractionDigits: 2,
                                                                 })
                                                                 : "-"
-                                                        }
-                                                        disabled
-                                                    />
-                                                </label>
+                                                        }</strong>
+                                                </div>
 
-                                                <label className="styled-field">
+                                                <div className="osx-detail-datum">
                                                     <span>วันหมดประกัน</span>
-                                                    <input
-                                                        value={selectedAsset.warranty_expiry || "-"}
-                                                        disabled
-                                                    />
-                                                </label>
+                                                    <strong>{selectedAsset.warranty_expiry || "-"}</strong>
+                                                </div>
 
-                                                <label className="styled-field full-field">
+                                                <div className="osx-detail-datum full-field">
                                                     <span>รายละเอียดเพิ่มเติม</span>
-                                                    <textarea
-                                                        value={selectedAsset.description || "-"}
-                                                        rows={3}
-                                                        disabled
-                                                    />
-                                                </label>
+                                                    <strong>{selectedAsset.description || "-"}</strong>
+                                                </div>
 
-                                                <label className="styled-field full-field">
+                                                <div className="osx-detail-datum full-field">
                                                     <span>วันที่ลงทะเบียน</span>
-                                                    <input
-                                                        value={
+                                                    <strong>{
                                                             selectedAsset.created_at
                                                                 ? new Date(
                                                                     selectedAsset.created_at
                                                                 ).toLocaleString("th-TH")
                                                                 : "-"
-                                                        }
-                                                        disabled
-                                                    />
-                                                </label>
+                                                        }</strong>
+                                                </div>
 
                                             </div>
 
-                                            <div className="form-actions">
+                                            <div className="osx-detail-actions">
                                                 {selectedAsset.status !== "DISPOSED" && (
                                                     <button
                                                         type="button"
@@ -2500,11 +2382,13 @@ export default function AssetManagement({
                                                 </button>
                                             </div>
 
+                                             </section>
+                                            </div>
                                             {/* Asset Assignment / Return / History */}
                                             {selectedAsset.tracking_type === "INDIVIDUAL" && (
-                                                <div className="full-field" style={{ marginTop: "24px" }}>
+                                                <div className="full-field osx-detail-section">
 
-                                                    <div className="section-heading">
+                                                    <div className="section-heading osx-detail-section-heading">
                                                         <div className="section-heading-icon">
                                                             <Users size={19} />
                                                         </div>
@@ -2538,19 +2422,9 @@ export default function AssetManagement({
                                                             {selectedAsset.status === "AVAILABLE" && (
                                                                 <form
                                                                     onSubmit={handleAssignAsset}
-                                                                    className="surface-card"
-                                                                    style={{ padding: "18px", marginBottom: "18px" }}
+                                                                    className="osx-detail-card osx-detail-action-card"
                                                                 >
-                                                                    <h3 style={{ marginBottom: "16px" }}>
-                                                                        <UserPlus
-                                                                            size={17}
-                                                                            style={{
-                                                                                display: "inline",
-                                                                                marginRight: "8px",
-                                                                            }}
-                                                                        />
-                                                                        เบิกจ่ายทรัพย์สิน
-                                                                    </h3>
+                                                                    <div className="osx-detail-card-heading"><span className="osx-detail-icon"><UserPlus size={18} /></span><div><h3>เบิกจ่ายทรัพย์สิน</h3><p>เลือกผู้รับหรือระบุชื่อผู้รับด้วยตนเอง</p></div></div>
 
                                                                     <div className="form-grid">
 
@@ -2596,6 +2470,7 @@ export default function AssetManagement({
                                                                                                 <button
                                                                                                     key={item.id}
                                                                                                     type="button"
+                                                                                                    className="osx-detail-user-option"
                                                                                                     onMouseDown={(event) => event.preventDefault()}
                                                                                                     onClick={() =>
                                                                                                         handleSelectAssignableUser(item)
@@ -2679,19 +2554,9 @@ export default function AssetManagement({
                                                             {selectedAsset.status === "ASSIGNED" && (
                                                                 <form
                                                                     onSubmit={handleReturnAsset}
-                                                                    className="surface-card"
-                                                                    style={{ padding: "18px", marginBottom: "18px" }}
+                                                                    className="osx-detail-card osx-detail-action-card"
                                                                 >
-                                                                    <h3 style={{ marginBottom: "16px" }}>
-                                                                        <RotateCcw
-                                                                            size={17}
-                                                                            style={{
-                                                                                display: "inline",
-                                                                                marginRight: "8px",
-                                                                            }}
-                                                                        />
-                                                                        รับคืนทรัพย์สิน
-                                                                    </h3>
+                                                                    <div className="osx-detail-card-heading"><span className="osx-detail-icon"><RotateCcw size={18} /></span><div><h3>รับคืนทรัพย์สิน</h3><p>บันทึกสภาพและรายละเอียดการคืน</p></div></div>
 
                                                                     <div className="form-grid">
 
@@ -2745,22 +2610,13 @@ export default function AssetManagement({
 
                                                             {/* Assignment History */}
                                                             <div
-                                                                className="surface-card"
-                                                                style={{ padding: "18px" }}
+                                                                className="osx-detail-card osx-detail-history"
                                                             >
-                                                                <h3 style={{ marginBottom: "16px" }}>
-                                                                    <History
-                                                                        size={17}
-                                                                        style={{
-                                                                            display: "inline",
-                                                                            marginRight: "8px",
-                                                                        }}
-                                                                    />
-                                                                    ประวัติการเบิก-คืน
-                                                                </h3>
+                                                                <div className="osx-detail-card-heading"><span className="osx-detail-icon"><History size={18} /></span><div><h3>ประวัติการเบิก-คืน</h3><p>Assignment history</p></div><span className="osx-detail-count">{assignments.length} รายการ</span></div>
 
                                                                 {assignments.length === 0 ? (
                                                                     <div className="empty-state">
+                                                                        <History size={30} />
                                                                         ยังไม่มีประวัติการเบิก-คืนทรัพย์สิน
                                                                     </div>
                                                                 ) : (
@@ -2849,8 +2705,8 @@ export default function AssetManagement({
 
                                             {/* Quantity Stock Issue / Receive / History */}
                                             {selectedAsset.tracking_type === "QUANTITY" && (
-                                                <div className="full-field" style={{ marginTop: "24px" }}>
-                                                    <div className="section-heading">
+                                                <div className="full-field osx-detail-section">
+                                                    <div className="section-heading osx-detail-section-heading">
                                                         <div className="section-heading-icon"><Boxes size={19} /></div>
                                                         <div>
                                                             <h2>เบิกจ่าย / รับสินค้าเข้าคลัง</h2>
@@ -2858,7 +2714,7 @@ export default function AssetManagement({
                                                         </div>
                                                     </div>
 
-                                                    <div className="surface-card" style={{ padding: "18px", marginBottom: "20px" }}>
+                                                    <div className="osx-detail-card osx-detail-action-card">
                                                         <div className="form-grid">
                                                             <label className="styled-field">
                                                                 <span>Stock คงเหลือ</span>
@@ -2893,8 +2749,8 @@ export default function AssetManagement({
                                                         </div>
                                                     )}
 
-                                                    {!["DISPOSED", "INACTIVE", "UNDER_REPAIR"].includes(selectedAsset.status) && <form onSubmit={handleStockTransaction} className="surface-card" style={{ padding: "18px", marginBottom: "20px" }}>
-                                                        <h3 style={{ marginBottom: "16px" }}>ทำรายการ Stock</h3>
+                                                    {!["DISPOSED", "INACTIVE", "UNDER_REPAIR"].includes(selectedAsset.status) && <form onSubmit={handleStockTransaction} className="osx-detail-card osx-detail-action-card">
+                                                        <div className="osx-detail-card-heading"><span className="osx-detail-icon"><Boxes size={18} /></span><div><h3>ทำรายการ Stock</h3><p>Stock issue / receive</p></div></div>
                                                         <div className="form-grid">
                                                             <label className="styled-field">
                                                                 <span>ประเภทรายการ *</span>
@@ -2997,7 +2853,7 @@ export default function AssetManagement({
                                                         </div>
                                                     </form>}
 
-                                                    <div className="surface-card" style={{ padding: "18px" }}>
+                                                    <div className="osx-detail-card osx-detail-history">
                                                         <h3 style={{ marginBottom: "16px" }}>
                                                             <History size={17} style={{ display: "inline", marginRight: "8px" }} />
                                                             ประวัติ Stock Transaction
