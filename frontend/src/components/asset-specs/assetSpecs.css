@@ -1,0 +1,11 @@
+.osx-specs { min-width: 0; margin: 16px 0; border: 1px solid var(--border, #e4eaf3); border-radius: 15px; background: #fff; color: var(--navy, #10284f); }
+.osx-specs-heading { display:flex; gap:12px; align-items:center; padding:18px; border-bottom:1px solid var(--border,#e4eaf3); }
+.osx-specs-heading h3 { margin:3px 0; font-size:17px; font-weight:700; }
+.osx-specs-heading small { font-size:10px; letter-spacing:.08em; font-weight:700; color:var(--red,#e44752); }
+.osx-specs-heading p { margin:0; font-size:12px; color:var(--muted,#75839a); }
+.osx-specs-icon { display:grid; place-items:center; width:42px; height:42px; border-radius:11px; flex:none; background:#edf4ff; color:var(--blue,#1758c8); }
+.osx-specs-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:18px; }
+.osx-specs-datum { background:#f4f7fc; border-radius:9px; padding:12px; display:flex; flex-direction:column; gap:5px; min-width:0; overflow-wrap:anywhere; }
+.osx-specs-datum span { font-size:12px; color:var(--muted,#75839a); }
+.osx-specs-datum strong { font-size:14px; font-weight:600; }
+@media(max-width:640px){.osx-specs-grid{grid-template-columns:1fr; padding:12px;}}

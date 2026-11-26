@@ -1,8 +1,12 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+SpecKey = Literal['display', 'cpu', 'ram', 'storage', 'operating_system', 'gpu', 'hostname', 'form_factor']
+SpecValue = Annotated[str, Field(max_length=500)]
+TechnicalSpecs = dict[SpecKey, SpecValue]
 
 TrackingType = Literal["INDIVIDUAL", "QUANTITY"]
 
@@ -18,6 +22,7 @@ class AssetCategoryResponse(BaseModel):
 class AssetCreate(BaseModel):
     asset_name: str = Field(min_length=2, max_length=200)
     category_id: int
+    technical_specs: TechnicalSpecs | None = None
     brand: str | None = None
     model: str | None = None
     serial_number: str | None = None
@@ -32,6 +37,7 @@ class AssetCreate(BaseModel):
 class AssetUpdate(BaseModel):
     asset_name: str | None = Field(default=None, min_length=2, max_length=200)
     category_id: int | None = None
+    technical_specs: TechnicalSpecs | None = None
     brand: str | None = None
     model: str | None = None
     serial_number: str | None = None
@@ -54,6 +60,7 @@ class AssetResponse(BaseModel):
     tracking_type: str
     asset_name: str
     category_id: int
+    technical_specs: TechnicalSpecs | None = None
     brand: str | None = None
     model: str | None = None
     serial_number: str | None = None

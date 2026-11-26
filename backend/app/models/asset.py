@@ -2,6 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (Boolean, Date, DateTime, ForeignKey, Integer, Numeric,String, Text, func,)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
@@ -33,6 +34,7 @@ class Asset(Base):
     serial_number: Mapped[str | None] = mapped_column(String(150), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    technical_specs: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     quantity_on_hand: Mapped[int] = mapped_column(Integer, default=0)

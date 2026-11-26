@@ -1,3 +1,4 @@
+import AssetSpecs, { supportsSpecs, cleanSpecs } from "../components/asset-specs/AssetSpecs";
 import { notifications } from "../utils/notifications";
 import useNotificationState from "../hooks/useNotificationState";
 import { useCallback, useEffect, useState } from "react";
@@ -126,6 +127,7 @@ export default function AssetManagement({
         minimum_quantity: "0",
         purchase_date: "",
         purchase_price: "",
+        technical_specs: {},
         warranty_years: "",
         warranty_expiry: "",
     };
@@ -182,6 +184,7 @@ export default function AssetManagement({
         minimum_quantity: "0",
         purchase_date: "",
         purchase_price: "",
+        technical_specs: {},
         warranty_years: "",
         warranty_expiry: "",
     });
@@ -426,6 +429,7 @@ export default function AssetManagement({
             selectedCategory.tracking_type === "QUANTITY";
 
         const payload = {
+            technical_specs: supportsSpecs(selectedCategory) ? cleanSpecs(assetForm.technical_specs) : null,
             asset_name: assetForm.asset_name.trim(),
             category_id: Number(assetForm.category_id),
             brand: assetForm.brand.trim() || null,
@@ -957,6 +961,7 @@ export default function AssetManagement({
         setEditSuccess("");
 
         setEditForm({
+            technical_specs: selectedAsset.technical_specs || {},
             asset_name: selectedAsset.asset_name || "",
             category_id: String(selectedAsset.category_id),
             brand: selectedAsset.brand || "",
@@ -1074,8 +1079,18 @@ export default function AssetManagement({
             return;
         }
 
+        if (!selectedCategory) {
+            setEditError("กรุณาโหลดหมวดหมู่ทรัพย์สินใหม่ก่อนบันทึก");
+            return;
+        }
+        if (!supportsSpecs(selectedCategory) && Object.keys(cleanSpecs(editForm.technical_specs)).length) {
+            const confirmed = await notifications.confirm("หมวดหมู่ใหม่ไม่รองรับข้อมูลสเปก ต้องการล้างข้อมูลสเปกเมื่อบันทึกหรือไม่?");
+            if (!confirmed) return;
+        }
+
         // ส่งเฉพาะฟิลด์ที่ AssetUpdate อนุญาต
         const payload = {
+            technical_specs: supportsSpecs(selectedCategory) ? cleanSpecs(editForm.technical_specs) : null,
             asset_name: editForm.asset_name.trim(),
             brand: editForm.brand.trim() || null,
             model: editForm.model.trim() || null,
@@ -2046,6 +2061,9 @@ export default function AssetManagement({
                                             </small>
                                         </label>
 
+                                        <AssetSpecs category={categories.find(c => String(c.id) === String(assetForm.category_id))}
+                                            value={assetForm.technical_specs} disabled={saving}
+                                            onChange={value => setAssetForm(prev => ({ ...prev, technical_specs: value }))} />
                                         {/* Description */}
                                         <label className="styled-field full-field">
                                             <span>รายละเอียดเพิ่มเติม</span>
@@ -2384,6 +2402,8 @@ export default function AssetManagement({
 
                                              </section>
                                             </div>
+                                            <AssetSpecs category={categories.find(c => c.id === selectedAsset.category_id)}
+                                                value={selectedAsset.technical_specs} readOnly />
                                             {/* Asset Assignment / Return / History */}
                                             {selectedAsset.tracking_type === "INDIVIDUAL" && (
                                                 <div className="full-field osx-detail-section">
@@ -3142,6 +3162,9 @@ export default function AssetManagement({
                                             </small>
                                         </label>
 
+                                        <AssetSpecs category={categories.find(c => String(c.id) === String(editForm.category_id))}
+                                            value={editForm.technical_specs} disabled={editSaving}
+                                            onChange={value => setEditForm(prev => ({ ...prev, technical_specs: value }))} />
                                         <label className="styled-field full-field">
                                             <span>รายละเอียดเพิ่มเติม</span>
                                             <textarea

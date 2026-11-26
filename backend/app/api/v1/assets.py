@@ -60,6 +60,13 @@ def get_assets(
 
     return db.scalars(query.order_by(Asset.id.desc())).all()
 
+SPEC_CATEGORY_NAMES = {'เครื่องคอมพิวเตอร์ Desktop', 'เครื่องคอมพิวเตอร์ Notebook', 'Server และระบบประมวลผล'}
+
+def normalize_specs(category, specs):
+    cleaned = {key: value.strip() for key, value in (specs or {}).items() if value.strip()}
+    if cleaned and (category is None or category.category_name.strip() not in SPEC_CATEGORY_NAMES):
+        raise HTTPException(400, "Technical specifications are not supported for this category")
+    return cleaned or None
 
 @router.post("", response_model=AssetResponse, status_code=201)
 def create_asset(
@@ -73,6 +80,7 @@ def create_asset(
         raise HTTPException(404, "Asset category not found")
 
     tracking_type = category.tracking_type
+    specs = normalize_specs(category, payload.technical_specs)
 
     if tracking_type == "INDIVIDUAL":
         if payload.quantity_on_hand != 0:
@@ -110,6 +118,7 @@ def create_asset(
             tracking_type=tracking_type,
             asset_name=payload.asset_name,
             category_id=payload.category_id,
+            technical_specs=specs,
             brand=payload.brand,
             model=payload.model,
             serial_number=payload.serial_number,
@@ -456,6 +465,13 @@ def update_asset(
             raise HTTPException(
                 400, "Cannot change asset tracking type"
             )
+        
+    target_category = db.get(AssetCategory, data.get("category_id", asset.category_id))
+    if "technical_specs" in data:
+        data["technical_specs"] = normalize_specs(target_category, data["technical_specs"])
+    elif "category_id" in data:
+        # Never silently discard specifications on category change.
+        normalize_specs(target_category, asset.technical_specs)
 
     for field, value in data.items():
         setattr(asset, field, value)
